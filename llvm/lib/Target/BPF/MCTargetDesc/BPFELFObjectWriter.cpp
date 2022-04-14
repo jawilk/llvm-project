@@ -97,7 +97,7 @@ unsigned BPFELFObjectWriter::getRelocType(MCContext &Ctx, const MCValue &Target,
        	  return ELF::R_BPF_64_ABS32;
       }
     }
-    return ELF::R_BPF_64_ABS32;
+    return ELF::R_BPF_64_32;
   }
 }
 
