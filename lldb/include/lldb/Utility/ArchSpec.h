@@ -203,6 +203,8 @@ public:
 
     eCore_wasm32,
 
+    eCore_bpfel,
+
     kNumCores,
 
     kCore_invalid,
