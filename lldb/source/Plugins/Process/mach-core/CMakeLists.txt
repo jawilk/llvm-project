@@ -9,9 +9,9 @@ add_lldb_library(lldbPluginProcessMachCore PLUGIN
     lldbSymbol
     lldbTarget
     lldbUtility
-    lldbPluginDynamicLoaderDarwinKernel
-    lldbPluginDynamicLoaderMacOSXDYLD
-    lldbPluginObjectFileMachO
+    #lldbPluginDynamicLoaderDarwinKernel
+    #lldbPluginDynamicLoaderMacOSXDYLD
+    #lldbPluginObjectFileMachO
   LINK_COMPONENTS
     Support
   )

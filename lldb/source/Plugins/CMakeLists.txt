@@ -5,7 +5,7 @@ add_subdirectory(DynamicLoader)
 add_subdirectory(ExpressionParser)
 add_subdirectory(Instruction)
 add_subdirectory(InstrumentationRuntime)
-add_subdirectory(JITLoader)
+#add_subdirectory(JITLoader)
 add_subdirectory(Language)
 add_subdirectory(LanguageRuntime)
 add_subdirectory(MemoryHistory)
@@ -31,7 +31,7 @@ set(LLDB_ENUM_PLUGINS "")
 
 # FIXME: ProcessWindowsCommon needs to be initialized after all other process
 # plugins but before ProcessGDBRemote.
-set(LLDB_PROCESS_WINDOWS_PLUGIN "")
+#set(LLDB_PROCESS_WINDOWS_PLUGIN "")
 set(LLDB_PROCESS_GDB_PLUGIN "")
 
 foreach(p ${LLDB_ALL_PLUGINS})

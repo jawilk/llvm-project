@@ -867,14 +867,14 @@ static llvm::Optional<int> InitializeReproducer(llvm::StringRef argv0,
   return llvm::None;
 }
 
-int main(int argc, char const *argv[]) {
+/*int main(int argc, char const *argv[]) {
   // Editline uses for example iswprint which is dependent on LC_CTYPE.
   std::setlocale(LC_ALL, "");
   std::setlocale(LC_CTYPE, "");
 
   // Setup LLVM signal handlers and make sure we call llvm_shutdown() on
   // destruction.
-  llvm::InitLLVM IL(argc, argv, /*InstallPipeSignalExitHandler=*/false);
+  llvm::InitLLVM IL(argc, argv, *//*InstallPipeSignalExitHandler=*//*false);
 
   // Parse arguments.
   LLDBOptTable T;
@@ -947,4 +947,47 @@ int main(int argc, char const *argv[]) {
 
   SBDebugger::Terminate();
   return exit_code;
+}*/
+
+// ------------------------------------------------------------------------
+class LLDBSentry {
+public:
+  LLDBSentry() {
+    // Initialize LLDB
+    SBDebugger::Initialize();
+  }
+  ~LLDBSentry() {
+    // Terminate LLDB
+    SBDebugger::Terminate();
+  }
+};
+
+static char command[1024];
+int main(int argc, char const *argv[]) {
+  llvm::errs() << "In main\n";
+  LLDBSentry sentry;
+
+       //std::cout << "LLDB got command: " << input << "\n";
+  SBDebugger debugger(SBDebugger::Create());
+  // Create a debugger instance so we can create a target
+  if (!debugger.IsValid())
+    fprintf(stderr, "error: failed to create a debugger object\n");
+
+    llvm::errs() << "Running command\n";
+          SBCommandReturnObject command_result;
+       snprintf(command, sizeof(command), "file /home/wj/a.out");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+snprintf(command, sizeof(command), "target list");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+snprintf(command, sizeof(command), "image lookup -r -n .*");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+    llvm::errs() << "Finished\n";
+     
+  return 0;
 }

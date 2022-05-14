@@ -125,19 +125,19 @@ llvm::Error SystemInitializerCommon::Initialize() {
   if (auto e = InitializeFileSystem())
     return e;
 
-  Log::Initialize();
+  //Log::Initialize();
   HostInfo::Initialize(m_shlib_dir_helper);
 
-  llvm::Error error = Socket::Initialize();
+  /*llvm::Error error = Socket::Initialize();
   if (error)
-    return error;
+    return error;*/
 
   LLDB_SCOPED_TIMER();
 
-  process_gdb_remote::ProcessGDBRemoteLog::Initialize();
+  //process_gdb_remote::ProcessGDBRemoteLog::Initialize();
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
-  ProcessPOSIXLog::Initialize();
+  //ProcessPOSIXLog::Initialize();
 #endif
 #if defined(_WIN32)
   ProcessWindowsLog::Initialize();

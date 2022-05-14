@@ -3085,17 +3085,17 @@ CommandInterpreterRunResult CommandInterpreter::RunCommandInterpreter(
   m_debugger.RunIOHandlerAsync(GetIOHandler(force_create, &options));
   m_result = CommandInterpreterRunResult();
 
-  if (options.GetAutoHandleEvents())
+  /*if (options.GetAutoHandleEvents())
     m_debugger.StartEventHandlerThread();
 
   if (options.GetSpawnThread()) {
     m_debugger.StartIOHandlerThread();
-  } else {
+  } else {*/
     m_debugger.RunIOHandlers();
 
-    if (options.GetAutoHandleEvents())
+   /* if (options.GetAutoHandleEvents())
       m_debugger.StopEventHandlerThread();
-  }
+  }*/
 
   return m_result;
 }

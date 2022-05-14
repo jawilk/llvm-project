@@ -16,7 +16,7 @@ add_lldb_library(lldbPluginJITLoaderGDB PLUGIN
     lldbSymbol
     lldbTarget
     lldbUtility
-    lldbPluginObjectFileMachO
+   #lldbPluginObjectFileMachO
   LINK_COMPONENTS
     Support
   )
