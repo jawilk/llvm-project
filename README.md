@@ -1,3 +1,24 @@
+### EMSCRIPTEN
+
+(0) Create build dirs  
+
+mkdir build_native  
+mkdir build_wasm  
+
+(1) Build native tablegens
+
+  ``cmake -G Ninja \
+        -S ../llvm/ \
+        -B ./ \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLLVM_TARGETS_TO_BUILD=WebAssembly \
+        -DLLVM_ENABLE_PROJECTS="clang;lldb"``
+        
+``cmake --build ./ -- llvm-tblgen clang-tblgen lldb-tblgen``
+
+
+---
+
 # The LLVM Compiler Infrastructure modified to support Berkley Packet Filter modules written in Rust
 
 This fork of LLVM is used by [this fork of Rust](https://github.com/solana-labs/rust)
