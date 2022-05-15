@@ -186,11 +186,13 @@ SBBroadcaster SBDebugger::GetBroadcaster() {
 }
 
 void SBDebugger::Initialize() {
+  llvm::errs() << "SBDebugger::Initialize\n";
   LLDB_RECORD_STATIC_METHOD_NO_ARGS(void, SBDebugger, Initialize);
   SBError ignored = SBDebugger::InitializeWithErrorHandling();
 }
 
 lldb::SBError SBDebugger::InitializeWithErrorHandling() {
+  llvm::errs() << "SBDebugger::InitializeWithErrorHandling()\n";
   LLDB_RECORD_STATIC_METHOD_NO_ARGS(lldb::SBError, SBDebugger,
                                     InitializeWithErrorHandling);
 
@@ -199,6 +201,7 @@ lldb::SBError SBDebugger::InitializeWithErrorHandling() {
           std::make_unique<SystemInitializerFull>(), LoadPlugin)) {
     error.SetError(Status(std::move(e)));
   }
+  llvm::errs() << "END SBDebugger::InitializeWithErrorHandling()\n";
   return LLDB_RECORD_RESULT(error);
 }
 
@@ -218,6 +221,7 @@ void SBDebugger::Clear() {
 }
 
 SBDebugger SBDebugger::Create() {
+  llvm::errs() << "SBDebugger::Create\n";
   LLDB_RECORD_STATIC_METHOD_NO_ARGS(lldb::SBDebugger, SBDebugger, Create);
 
   return LLDB_RECORD_RESULT(SBDebugger::Create(false, nullptr, nullptr));
@@ -235,12 +239,13 @@ SBDebugger SBDebugger::Create(bool source_init_files,
                               lldb::LogOutputCallback callback, void *baton)
 
 {
+  llvm::errs() << "3 SBDebugger::Create\n";
   LLDB_RECORD_DUMMY(lldb::SBDebugger, SBDebugger, Create,
                     (bool, lldb::LogOutputCallback, void *), source_init_files,
                     callback, baton);
 
   SBDebugger debugger;
-
+  llvm::errs() << "4 SBDebugger::Create\n";
   // Currently we have issues if this function is called simultaneously on two
   // different threads. The issues mainly revolve around the fact that the
   // lldb_private::FormatManager uses global collections and having two threads
@@ -250,7 +255,7 @@ SBDebugger SBDebugger::Create(bool source_init_files,
   std::lock_guard<std::recursive_mutex> guard(g_mutex);
 
   debugger.reset(Debugger::CreateInstance(callback, baton));
-
+  llvm::errs() << "5 SBDebugger::Create\n";
   SBCommandInterpreter interp = debugger.GetCommandInterpreter();
   if (source_init_files) {
     interp.get()->SkipLLDBInitFiles(false);
@@ -261,6 +266,7 @@ SBDebugger SBDebugger::Create(bool source_init_files,
     interp.get()->SkipLLDBInitFiles(true);
     interp.get()->SkipAppInitFiles(true);
   }
+  llvm::errs() << "END SBDebugger::Create\n";
   return debugger;
 }
 

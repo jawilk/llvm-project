@@ -5,6 +5,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+#include "lldb/API/SBTarget.h"
+
 
 #include "Driver.h"
 
@@ -866,8 +868,8 @@ static llvm::Optional<int> InitializeReproducer(llvm::StringRef argv0,
 
   return llvm::None;
 }
-
-/*int main(int argc, char const *argv[]) {
+/*
+int main(int argc, char const *argv[]) {
   // Editline uses for example iswprint which is dependent on LC_CTYPE.
   std::setlocale(LC_ALL, "");
   std::setlocale(LC_CTYPE, "");
@@ -947,8 +949,8 @@ static llvm::Optional<int> InitializeReproducer(llvm::StringRef argv0,
 
   SBDebugger::Terminate();
   return exit_code;
-}*/
-
+}
+*/
 // ------------------------------------------------------------------------
 class LLDBSentry {
 public:
@@ -967,26 +969,49 @@ int main(int argc, char const *argv[]) {
   llvm::errs() << "In main\n";
   LLDBSentry sentry;
 
+  const char *exe_file_path = "/home/wj/a.out";
+ const char *arch = NULL;
+  const char *platform = NULL;
+  const bool add_dependent_libs = false;
+  SBError error;
+          SBCommandReturnObject command_result;
+
        //std::cout << "LLDB got command: " << input << "\n";
   SBDebugger debugger(SBDebugger::Create());
+  debugger.SetAsync(false);
   // Create a debugger instance so we can create a target
   if (!debugger.IsValid())
     fprintf(stderr, "error: failed to create a debugger object\n");
 
-    llvm::errs() << "Running command\n";
-          SBCommandReturnObject command_result;
+SBTarget target = debugger.CreateTarget(exe_file_path, arch, platform,
+                                            add_dependent_libs, error);
+
+    /*llvm::errs() << "Running command\n";
        snprintf(command, sizeof(command), "file /home/wj/a.out");
        debugger.GetCommandInterpreter().HandleCommand(command,
                                                       command_result);
-   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";*/
 snprintf(command, sizeof(command), "target list");
        debugger.GetCommandInterpreter().HandleCommand(command,
                                                       command_result);
    llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Print: " << command_result.GetOutputSize() << "\n";
+   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
 snprintf(command, sizeof(command), "image lookup -r -n .*");
        debugger.GetCommandInterpreter().HandleCommand(command,
                                                       command_result);
    llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Print: " << command_result.GetOutputSize() << "\n";
+   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
+snprintf(command, sizeof(command), "b main");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+snprintf(command, sizeof(command), "run");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
     llvm::errs() << "Finished\n";
      
   return 0;

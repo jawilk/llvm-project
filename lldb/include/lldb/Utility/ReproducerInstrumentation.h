@@ -20,6 +20,7 @@
 #include <thread>
 #include <type_traits>
 
+
 template <typename T,
           typename std::enable_if<std::is_fundamental<T>::value, int>::type = 0>
 inline void stringify_append(llvm::raw_string_ostream &ss, const T &t) {
@@ -636,7 +637,7 @@ private:
   /// Serialize references. We need to differentiate between references to
   /// fundamental types (in which case we serialize its value) and references
   /// to objects (in which case we serialize their index).
-  template <typename T> void Serialize(T &t) {
+  template <typename T> void Serialize(T &t) {/*
 #ifdef LLDB_REPRO_INSTR_TRACE
     this_thread_id() << "Serializing with " << LLVM_PRETTY_FUNCTION << " -> "
                      << stringify_args(t) << "\n";
@@ -646,7 +647,7 @@ private:
     } else {
       unsigned idx = m_tracker.GetIndexForObject(&t);
       Serialize(idx);
-    }
+    }*/
   }
 
   void Serialize(const void *v) {

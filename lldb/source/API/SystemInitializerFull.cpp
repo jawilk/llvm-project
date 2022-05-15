@@ -49,6 +49,7 @@ SystemInitializerFull::SystemInitializerFull()
 SystemInitializerFull::~SystemInitializerFull() = default;
 
 llvm::Error SystemInitializerFull::Initialize() {
+  llvm::errs() << "SystemInitializerFull::Initialize()\n";
   llvm::Error error = SystemInitializerCommon::Initialize();
   if (error) {
     // During active replay, the ::Initialize call is replayed like any other
@@ -72,7 +73,7 @@ llvm::Error SystemInitializerFull::Initialize() {
   // thread-safe).
   const char *arg0 = "lldb";
   llvm::cl::ParseCommandLineOptions(1, &arg0);
-
+  llvm::errs() << "MID SystemInitializerFull::Initialize()\n";
 #define LLDB_PLUGIN(p) LLDB_PLUGIN_INITIALIZE(p);
 #include "Plugins/Plugins.def"
 
@@ -80,12 +81,12 @@ llvm::Error SystemInitializerFull::Initialize() {
   ProcessTrace::Initialize();
 
   // Scan for any system or user LLDB plug-ins
-  PluginManager::Initialize();
+  //PluginManager::Initialize();
 
   // The process settings need to know about installed plug-ins, so the
   // Settings must be initialized AFTER PluginManager::Initialize is called.
   Debugger::SettingsInitialize();
-
+  llvm::errs() << "END SystemInitializerFull::Initialize()\n";
   return llvm::Error::success();
 }
 

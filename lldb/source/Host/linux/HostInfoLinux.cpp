@@ -49,6 +49,7 @@ void HostInfoLinux::Terminate() {
 }
 
 llvm::VersionTuple HostInfoLinux::GetOSVersion() {
+  llvm::errs() << "HostInfoLinux::GetOSVersion\n";
   assert(g_fields && "Missing call to Initialize?");
   llvm::call_once(g_fields->m_os_version_once_flag, []() {
     struct utsname un;
@@ -66,6 +67,7 @@ llvm::VersionTuple HostInfoLinux::GetOSVersion() {
 }
 
 bool HostInfoLinux::GetOSBuildString(std::string &s) {
+  llvm::errs() << "GetOSBuildString\n";
   struct utsname un;
   ::memset(&un, 0, sizeof(utsname));
   s.clear();
@@ -213,6 +215,7 @@ bool HostInfoLinux::ComputeUserPluginsDirectory(FileSpec &file_spec) {
 
 void HostInfoLinux::ComputeHostArchitectureSupport(ArchSpec &arch_32,
                                                    ArchSpec &arch_64) {
+  llvm::errs() << "ComputeHostArchitectureSupport\n";
   HostInfoPosix::ComputeHostArchitectureSupport(arch_32, arch_64);
 
   const char *distribution_id = GetDistributionId().data();

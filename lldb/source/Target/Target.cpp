@@ -2340,7 +2340,9 @@ Target::CreateUtilityFunction(std::string expression, std::string name,
   return std::move(utility_fn);
 }
 
-void Target::SettingsInitialize() { Process::SettingsInitialize(); }
+void Target::SettingsInitialize() { 
+  llvm::errs() << "Target::SettingsInitialize\n";
+  Process::SettingsInitialize(); }
 
 void Target::SettingsTerminate() { Process::SettingsTerminate(); }
 
@@ -2359,6 +2361,7 @@ FileSpecList Target::GetDefaultDebugFileSearchPaths() {
 }
 
 ArchSpec Target::GetDefaultArchitecture() {
+  llvm::errs() << "Target::GetDefaultArchitecture\n";
   TargetPropertiesSP properties_sp(Target::GetGlobalProperties());
   if (properties_sp)
     return properties_sp->GetDefaultArchitecture();

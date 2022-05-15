@@ -1335,6 +1335,7 @@ LanguageSet PluginManager::GetREPLAllTypeSystemSupportedLanguages() {
 #pragma mark PluginManager
 
 void PluginManager::DebuggerInitialize(Debugger &debugger) {
+  llvm::errs() << "PluginManager::DebuggerInitialize\n";
   GetDynamicLoaderInstances().PerformDebuggerCallback(debugger);
   GetJITLoaderInstances().PerformDebuggerCallback(debugger);
   GetPlatformInstances().PerformDebuggerCallback(debugger);

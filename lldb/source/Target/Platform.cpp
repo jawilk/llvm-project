@@ -132,7 +132,9 @@ void PlatformProperties::SetDefaultModuleCacheDirectory(
 ///
 /// This platform will be used as the default platform when launching
 /// or attaching to processes unless another platform is specified.
-PlatformSP Platform::GetHostPlatform() { return GetHostPlatformSP(); }
+PlatformSP Platform::GetHostPlatform() { 
+  llvm::errs() << "Platform::GetHostPlatform\n";
+  return GetHostPlatformSP(); }
 
 static std::vector<PlatformSP> &GetPlatformList() {
   static std::vector<PlatformSP> g_platform_list;

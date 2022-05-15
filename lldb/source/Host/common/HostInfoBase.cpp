@@ -72,6 +72,7 @@ static HostInfoBaseFields *g_fields = nullptr;
 static HostInfoBase::SharedLibraryDirectoryHelper *g_shlib_dir_helper = nullptr;
 
 void HostInfoBase::Initialize(SharedLibraryDirectoryHelper *helper) {
+  llvm::errs() << "HostInfoBase::Initialize\n";
   g_shlib_dir_helper = helper;
   g_fields = new HostInfoBaseFields();
 }

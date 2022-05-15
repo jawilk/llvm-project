@@ -342,6 +342,7 @@ SBPlatform &SBPlatform::operator=(const SBPlatform &rhs) {
 SBPlatform::~SBPlatform() = default;
 
 SBPlatform SBPlatform::GetHostPlatform() {
+  llvm::errs() << "SBPlatform::GetHostPlatform\n";
   LLDB_RECORD_STATIC_METHOD_NO_ARGS(lldb::SBPlatform, SBPlatform,
                                     GetHostPlatform);
 

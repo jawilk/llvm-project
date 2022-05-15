@@ -498,7 +498,9 @@ void Debugger::Terminate() {
   }
 }
 
-void Debugger::SettingsInitialize() { Target::SettingsInitialize(); }
+void Debugger::SettingsInitialize() { 
+  llvm::errs() << "Debugger::SettingsInitialize\n";
+  Target::SettingsInitialize(); }
 
 void Debugger::SettingsTerminate() { Target::SettingsTerminate(); }
 
@@ -565,6 +567,7 @@ LoadPluginCallback(void *baton, llvm::sys::fs::file_type ft,
 }
 
 void Debugger::InstanceInitialize() {
+  llvm::errs() << "Debugger::InstanceInitialize\n";
   const bool find_directories = true;
   const bool find_files = true;
   const bool find_other = true;
@@ -592,6 +595,7 @@ void Debugger::InstanceInitialize() {
 
 DebuggerSP Debugger::CreateInstance(lldb::LogOutputCallback log_callback,
                                     void *baton) {
+  llvm::errs() << "Debugger::CreateInstance\n";
   DebuggerSP debugger_sp(new Debugger(log_callback, baton));
   if (g_debugger_list_ptr && g_debugger_list_mutex_ptr) {
     std::lock_guard<std::recursive_mutex> guard(*g_debugger_list_mutex_ptr);
@@ -697,6 +701,7 @@ Debugger::Debugger(lldb::LogOutputCallback log_callback, void *baton)
       m_broadcaster(m_broadcaster_manager_sp,
                     GetStaticBroadcasterClass().AsCString()),
       m_forward_listener_sp(), m_clear_once() {
+  llvm::errs() << "Debugger::Debugger\n";
   m_instance_name.SetString(llvm::formatv("debugger_{0}", GetID()).str());
   if (log_callback)
     m_log_callback_stream_sp =
@@ -706,7 +711,7 @@ Debugger::Debugger(lldb::LogOutputCallback log_callback, void *baton)
   PlatformSP default_platform_sp(Platform::GetHostPlatform());
   assert(default_platform_sp);
   m_platform_list.Append(default_platform_sp, true);
-
+  llvm::errs() << "2 Debugger::Debugger\n";
   // Create the dummy target.
   {
     ArchSpec arch(Target::GetDefaultArchitecture());
@@ -717,6 +722,7 @@ Debugger::Debugger(lldb::LogOutputCallback log_callback, void *baton)
     m_dummy_target_sp.reset(
         new Target(*this, arch, default_platform_sp, is_dummy_target));
   }
+  llvm::errs() << "3 Debugger::Debugger\n";
   assert(m_dummy_target_sp.get() && "Couldn't construct dummy target?");
 
   m_collection_sp->Initialize(g_debugger_properties);
@@ -736,6 +742,7 @@ Debugger::Debugger(lldb::LogOutputCallback log_callback, void *baton)
         ConstString("Settings specify to the debugger's command interpreter."),
         true, m_command_interpreter_up->GetValueProperties());
   }
+  llvm::errs() << "4 Debugger::Debugger\n";
   OptionValueSInt64 *term_width =
       m_collection_sp->GetPropertyAtIndexAsOptionValueSInt64(
           nullptr, ePropertyTerminalWidth);
@@ -749,7 +756,7 @@ Debugger::Debugger(lldb::LogOutputCallback log_callback, void *baton)
   // Turn off use-color if we don't write to a terminal with color support.
   if (!GetOutputFile().GetIsTerminalWithColors())
     SetUseColor(false);
-
+  llvm::errs() << "END Debugger::Debugger\n";
 #if defined(_WIN32) && defined(ENABLE_VIRTUAL_TERMINAL_PROCESSING)
   // Enabling use of ANSI color codes because LLDB is using them to highlight
   // text.

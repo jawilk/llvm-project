@@ -93,6 +93,7 @@ static llvm::Error InitializeFileSystem() {
 }
 
 llvm::Error SystemInitializerCommon::Initialize() {
+  llvm::errs() << "SystemInitializerCommon::Initialize()\n";
 #if defined(_WIN32)
   const char *disable_crash_dialog_var = getenv("LLDB_DISABLE_CRASH_DIALOG");
   if (disable_crash_dialog_var &&
@@ -125,24 +126,24 @@ llvm::Error SystemInitializerCommon::Initialize() {
   if (auto e = InitializeFileSystem())
     return e;
 
-  //Log::Initialize();
+  Log::Initialize();
   HostInfo::Initialize(m_shlib_dir_helper);
 
-  /*llvm::Error error = Socket::Initialize();
+  llvm::Error error = Socket::Initialize();
   if (error)
-    return error;*/
+    return error;
 
-  LLDB_SCOPED_TIMER();
+ LLDB_SCOPED_TIMER();
 
-  //process_gdb_remote::ProcessGDBRemoteLog::Initialize();
+  process_gdb_remote::ProcessGDBRemoteLog::Initialize();
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
-  //ProcessPOSIXLog::Initialize();
+  ProcessPOSIXLog::Initialize();
 #endif
 #if defined(_WIN32)
   ProcessWindowsLog::Initialize();
 #endif
-
+  llvm::errs() << "END SystemInitializerCommon::Initialize()\n";
   return llvm::Error::success();
 }
 
