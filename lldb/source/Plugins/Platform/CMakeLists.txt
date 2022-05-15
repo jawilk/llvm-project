@@ -1,4 +1,4 @@
-#if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+#if (CMAKE_SYSTEM_NAME MATCHES "Linux|Emscripten")
   add_subdirectory(Linux)
 #elseif (CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
   add_subdirectory(FreeBSD)

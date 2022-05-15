@@ -75,6 +75,7 @@ void HostInfoBase::Initialize(SharedLibraryDirectoryHelper *helper) {
   llvm::errs() << "HostInfoBase::Initialize\n";
   g_shlib_dir_helper = helper;
   g_fields = new HostInfoBaseFields();
+  llvm::errs() << "END HostInfoBase::Initialize\n";
 }
 
 void HostInfoBase::Terminate() {

@@ -36,6 +36,7 @@ HostInfoLinuxFields *g_fields = nullptr;
 }
 
 void HostInfoLinux::Initialize(SharedLibraryDirectoryHelper *helper) {
+  llvm::errs() << "HostInfoLinux::Initialize\n";
   HostInfoPosix::Initialize(helper);
 
   g_fields = new HostInfoLinuxFields();

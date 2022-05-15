@@ -277,7 +277,7 @@ uint32_t Host::FindProcessesImpl(const ProcessInstanceInfoMatch &match_info,
   return process_infos.size();
 }
 
-bool Host::FindProcessThreads(const lldb::pid_t pid, TidMap &tids_to_attach) {
+/*bool Host::FindProcessThreads(const lldb::pid_t pid, TidMap &tids_to_attach) {
   bool tids_changed = false;
   static const char procdir[] = "/proc/";
   static const char taskdir[] = "/task/";
@@ -301,7 +301,7 @@ bool Host::FindProcessThreads(const lldb::pid_t pid, TidMap &tids_to_attach) {
   }
 
   return tids_changed;
-}
+}*/
 
 bool Host::GetProcessInfo(lldb::pid_t pid, ProcessInstanceInfo &process_info) {
   ::pid_t tracerpid;

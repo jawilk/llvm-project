@@ -115,24 +115,25 @@ llvm::Error SystemInitializerCommon::Initialize() {
     _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
   }
 #endif
-
+  llvm::errs() << "2 SystemInitializerCommon::Initialize()\n";
   // If the reproducer wasn't initialized before, we can safely assume it's
   // off.
   if (!Reproducer::Initialized()) {
     if (auto e = Reproducer::Initialize(ReproducerMode::Off, llvm::None))
       return e;
   }
-
+  llvm::errs() << "3 SystemInitializerCommon::Initialize()\n";
   if (auto e = InitializeFileSystem())
     return e;
-
+  llvm::errs() << "3.5 SystemInitializerCommon::Initialize()\n";
   Log::Initialize();
+  llvm::errs() << "3.6 SystemInitializerCommon::Initialize()\n";
   HostInfo::Initialize(m_shlib_dir_helper);
-
+  llvm::errs() << "4 SystemInitializerCommon::Initialize()\n";
   llvm::Error error = Socket::Initialize();
   if (error)
     return error;
-
+  llvm::errs() << "5 SystemInitializerCommon::Initialize()\n";
  LLDB_SCOPED_TIMER();
 
   process_gdb_remote::ProcessGDBRemoteLog::Initialize();

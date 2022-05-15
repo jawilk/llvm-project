@@ -98,7 +98,7 @@ else()
     endif()
 
 
-  elseif (CMAKE_SYSTEM_NAME MATCHES "Linux|Android")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "Linux|Android|Emscripten")
     add_host_subdirectory(linux
       linux/AbstractSocket.cpp
       linux/Host.cpp
@@ -111,6 +111,11 @@ else()
         android/HostInfoAndroid.cpp
         android/LibcGlue.cpp
         )
+    #elseif (CMAKE_SYSTEM_NAME MATCHES "Emscripten")
+     # add_host_subdirectory(emscripten
+      #  emscripten/HostInfoEmscripten.cpp
+       # emscripten/LibcGlue.cpp
+        #)
     endif()
   elseif (CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
     add_host_subdirectory(freebsd
