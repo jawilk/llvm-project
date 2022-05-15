@@ -48,11 +48,11 @@ Status TargetList::CreateTarget(Debugger &debugger,
                                 LoadDependentFiles load_dependent_files,
                                 const OptionGroupPlatform *platform_options,
                                 TargetSP &target_sp) {
+  llvm::errs() << "TargetList::CreateTarget\n";
   std::lock_guard<std::recursive_mutex> guard(m_target_list_mutex);
   auto result = TargetList::CreateTargetInternal(
       debugger, user_exe_path, triple_str, load_dependent_files,
       platform_options, target_sp);
-
   if (target_sp && result.Success())
     AddTargetInternal(target_sp, /*do_select*/ true);
   return result;
@@ -77,11 +77,11 @@ Status TargetList::CreateTargetInternal(
     Debugger &debugger, llvm::StringRef user_exe_path,
     llvm::StringRef triple_str, LoadDependentFiles load_dependent_files,
     const OptionGroupPlatform *platform_options, TargetSP &target_sp) {
+  llvm::errs() << "TargetList::CreateTargetInternal\n";
   Status error;
 
   // Let's start by looking at the selected platform.
   PlatformSP platform_sp = debugger.GetPlatformList().GetSelectedPlatform();
-
   // This variable corresponds to the architecture specified by the triple
   // string. If that string was empty the currently selected platform will
   // determine the architecture.
@@ -93,7 +93,6 @@ Status TargetList::CreateTargetInternal(
   }
 
   ArchSpec platform_arch(arch);
-
   // Create a new platform if a platform was specified in the platform options
   // and doesn't match the selected platform.
   if (platform_options && platform_options->PlatformWasSpecified() &&
@@ -105,7 +104,6 @@ Status TargetList::CreateTargetInternal(
     if (!platform_sp)
       return error;
   }
-
   bool prefer_platform_arch = false;
   auto update_platform_arch = [&](const ArchSpec &module_arch) {
     // If the OS or vendor weren't specified, then adopt the module's
@@ -116,7 +114,6 @@ Status TargetList::CreateTargetInternal(
       platform_arch = module_arch;
     }
   };
-
   if (!user_exe_path.empty()) {
     ModuleSpec module_spec(FileSpec(user_exe_path, FileSpec::Style::native));
     FileSystem::Instance().Resolve(module_spec.GetFileSpec());
@@ -253,10 +250,9 @@ Status TargetList::CreateTargetInternal(
       }
     }
   }
-
   // If we have a valid architecture, make sure the current platform is
   // compatible with that architecture.
-  if (!prefer_platform_arch && arch.IsValid()) {
+  /*if (!prefer_platform_arch && arch.IsValid()) {
     if (!platform_sp->IsCompatibleArchitecture(arch, false, nullptr)) {
       platform_sp = Platform::GetPlatformForArchitecture(arch, &platform_arch);
       if (platform_sp)
@@ -272,11 +268,9 @@ Status TargetList::CreateTargetInternal(
       if (platform_sp)
         debugger.GetPlatformList().SetSelectedPlatform(platform_sp);
     }
-  }
-
+  }*/
   if (!platform_arch.IsValid())
     platform_arch = arch;
-
   return TargetList::CreateTargetInternal(debugger, user_exe_path,
                                           platform_arch, load_dependent_files,
                                           platform_sp, target_sp);
