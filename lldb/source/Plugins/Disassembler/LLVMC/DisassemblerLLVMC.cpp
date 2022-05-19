@@ -1240,6 +1240,7 @@ size_t DisassemblerLLVMC::DecodeInstructions(const Address &base_addr,
 }
 
 void DisassemblerLLVMC::Initialize() {
+  llvm::errs() << "DisassemblerLLVMC::Initialize()\n";
   PluginManager::RegisterPlugin(GetPluginNameStatic(),
                                 "Disassembler that uses LLVM MC to disassemble "
                                 "i386, x86_64, ARM, and ARM64.",

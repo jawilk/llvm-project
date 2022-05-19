@@ -343,6 +343,7 @@ llvm::Expected<std::vector<::pid_t>> NativeProcessLinux::Attach(::pid_t pid) {
   // Use a map to keep track of the threads which we have attached/need to
   // attach.
   Host::TidMap tids_to_attach;
+  //while(false) {
   while (Host::FindProcessThreads(pid, tids_to_attach)) {
     for (Host::TidMap::iterator it = tids_to_attach.begin();
          it != tids_to_attach.end();) {

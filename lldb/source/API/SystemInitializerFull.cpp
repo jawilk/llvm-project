@@ -66,6 +66,7 @@ llvm::Error SystemInitializerFull::Initialize() {
   llvm::InitializeAllAsmPrinters();
   llvm::InitializeAllTargetMCs();
   llvm::InitializeAllDisassemblers();
+  llvm::errs() << "after llvm SystemInitializerFull::Initialize()\n";
   // Initialize the command line parser in LLVM. This usually isn't necessary
   // as we aren't dealing with command line options here, but otherwise some
   // other code in Clang/LLVM might be tempted to call this function from a
@@ -76,12 +77,12 @@ llvm::Error SystemInitializerFull::Initialize() {
   llvm::errs() << "MID SystemInitializerFull::Initialize()\n";
 #define LLDB_PLUGIN(p) LLDB_PLUGIN_INITIALIZE(p);
 #include "Plugins/Plugins.def"
-
+  llvm::errs() << "after Plugins.def SystemInitializerFull::Initialize()\n";
   // Initialize plug-ins in core LLDB
   ProcessTrace::Initialize();
 
   // Scan for any system or user LLDB plug-ins
-  //PluginManager::Initialize();
+  PluginManager::Initialize();
 
   // The process settings need to know about installed plug-ins, so the
   // Settings must be initialized AFTER PluginManager::Initialize is called.

@@ -154,6 +154,7 @@ lldb_private::Status PlatformPOSIX::GetFile(
     const lldb_private::FileSpec &source,      // remote file path
     const lldb_private::FileSpec &destination) // local file path
 {
+  llvm::errs() << "PlatformPOSIX::GetFile\n";
   Log *log(GetLogIfAnyCategoriesSet(LIBLLDB_LOG_PLATFORM));
 
   // Check the args, first.

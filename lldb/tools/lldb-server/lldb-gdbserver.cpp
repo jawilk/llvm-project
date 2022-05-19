@@ -37,7 +37,7 @@
 #include "llvm/Support/Errno.h"
 #include "llvm/Support/WithColor.h"
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
 #include "Plugins/Process/Linux/NativeProcessLinux.h"
 #elif defined(__FreeBSD__)
 #include "Plugins/Process/FreeBSD/NativeProcessFreeBSD.h"
@@ -62,7 +62,7 @@ using namespace lldb_private::lldb_server;
 using namespace lldb_private::process_gdb_remote;
 
 namespace {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
 typedef process_linux::NativeProcessLinux::Factory NativeProcessFactory;
 #elif defined(__FreeBSD__)
 typedef process_freebsd::NativeProcessFreeBSD::Factory NativeProcessFactory;

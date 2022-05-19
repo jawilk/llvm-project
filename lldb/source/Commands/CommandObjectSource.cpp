@@ -923,6 +923,7 @@ protected:
   }
 
   bool DoExecute(Args &command, CommandReturnObject &result) override {
+    llvm::errs() << "DoExecute CommandObjectSource\n";
     const size_t argc = command.GetArgumentCount();
 
     if (argc != 0) {
@@ -930,13 +931,13 @@ protected:
                                    GetCommandName().str().c_str());
       return false;
     }
-
+    llvm::errs() << "0 DoExecute CommandObjectSource\n";
     Target *target = m_exe_ctx.GetTargetPtr();
-
+    llvm::errs() << "0.5 DoExecute CommandObjectSource\n";
     if (!m_options.symbol_name.empty()) {
       SymbolContextList sc_list;
       ConstString name(m_options.symbol_name.c_str());
-
+    llvm::errs() << "1 DoExecute CommandObjectSource\n";
       // Displaying the source for a symbol. Search for function named name.
       FindMatchingFunctions(target, name, sc_list);
       size_t num_matches = sc_list.GetSize();
@@ -946,7 +947,7 @@ protected:
         SymbolContextList sc_list_symbols;
         FindMatchingFunctionSymbols(target, name, sc_list_symbols);
         size_t num_symbol_matches = sc_list_symbols.GetSize();
-
+    llvm::errs() << "2 DoExecute CommandObjectSource\n";
         for (size_t i = 0; i < num_symbol_matches; i++) {
           SymbolContext sc;
           sc_list_symbols.GetContextAtIndex(i, sc);
@@ -967,7 +968,7 @@ protected:
                                      m_options.symbol_name.c_str());
         return false;
       }
-
+    llvm::errs() << "3 DoExecute CommandObjectSource\n";
       if (num_matches > 1) {
         std::set<SourceInfo> source_match_set;
 
@@ -986,7 +987,7 @@ protected:
             }
           }
         }
-
+    llvm::errs() << "4 DoExecute CommandObjectSource\n";
         if (displayed_something)
           result.SetStatus(eReturnStatusSuccessFinishResult);
         else
@@ -1007,7 +1008,7 @@ protected:
       Address so_addr;
       StreamString error_strm;
       SymbolContextList sc_list;
-
+    llvm::errs() << "5 DoExecute CommandObjectSource\n";
       if (target->GetSectionLoadList().IsEmpty()) {
         // The target isn't loaded yet, we need to lookup the file address in
         // all modules
@@ -1025,7 +1026,7 @@ protected:
               sc_list.Append(sc);
           }
         }
-
+    llvm::errs() << "6 DoExecute CommandObjectSource\n";
         if (sc_list.GetSize() == 0) {
           result.AppendErrorWithFormat(
               "no modules have source information for file address 0x%" PRIx64
@@ -1034,6 +1035,7 @@ protected:
           return false;
         }
       } else {
+    llvm::errs() << "6.4 DoExecute CommandObjectSource\n";
         // The target has some things loaded, resolve this address to a compile
         // unit + file + line and display
         if (target->GetSectionLoadList().ResolveLoadAddress(m_options.address,
@@ -1057,7 +1059,7 @@ protected:
             }
           }
         }
-
+    llvm::errs() << "6.5 DoExecute CommandObjectSource\n";
         if (sc_list.GetSize() == 0) {
           result.AppendErrorWithFormat(
               "no modules contain load address 0x%" PRIx64 ".\n",
@@ -1097,7 +1099,7 @@ protected:
 
           size_t lines_to_back_up =
               m_options.num_lines >= 10 ? 5 : m_options.num_lines / 2;
-
+    llvm::errs() << "7 DoExecute CommandObjectSource\n";
           const uint32_t column =
               (GetDebugger().GetStopShowColumn() != eStopShowColumnNone)
                   ? sc.line_entry.column
@@ -1110,24 +1112,30 @@ protected:
         }
       }
     } else if (m_options.file_name.empty()) {
+    llvm::errs() << "8 DoExecute CommandObjectSource\n";
       // Last valid source manager context, or the current frame if no valid
       // last context in source manager. One little trick here, if you type the
       // exact same list command twice in a row, it is more likely because you
       // typed it once, then typed it again
       if (m_options.start_line == 0) {
+    llvm::errs() << "8.1 DoExecute CommandObjectSource\n";
         if (target->GetSourceManager().DisplayMoreWithLineNumbers(
                 &result.GetOutputStream(), m_options.num_lines,
                 m_options.reverse, GetBreakpointLocations())) {
+    llvm::errs() << "8.2 DoExecute CommandObjectSource\n";
           result.SetStatus(eReturnStatusSuccessFinishResult);
         }
       } else {
+    llvm::errs() << "8.3 DoExecute CommandObjectSource\n";
         if (m_options.num_lines == 0)
           m_options.num_lines = 10;
-
+    llvm::errs() << "8.5 DoExecute CommandObjectSource\n";
         if (m_options.show_bp_locs) {
+    llvm::errs() << "8.6 DoExecute CommandObjectSource\n";
           SourceManager::FileSP last_file_sp(
               target->GetSourceManager().GetLastFile());
           if (last_file_sp) {
+    llvm::errs() << "8.7 DoExecute CommandObjectSource\n";
             const bool show_inlines = true;
             m_breakpoint_locations.Reset(last_file_sp->GetFileSpec(), 0,
                                          show_inlines);
@@ -1137,7 +1145,7 @@ protected:
           }
         } else
           m_breakpoint_locations.Clear();
-
+    llvm::errs() << "8.6 DoExecute CommandObjectSource\n";
         const uint32_t column = 0;
         if (target->GetSourceManager()
                 .DisplaySourceLinesWithLineNumbersUsingLastFile(
@@ -1152,11 +1160,11 @@ protected:
       }
     } else {
       const char *filename = m_options.file_name.c_str();
-
+    llvm::errs() << "9 DoExecute CommandObjectSource\n";
       bool check_inlines = false;
       SymbolContextList sc_list;
       size_t num_matches = 0;
-
+    llvm::errs() << "10 DoExecute CommandObjectSource\n";
       if (!m_options.modules.empty()) {
         ModuleList matching_modules;
         for (size_t i = 0, e = m_options.modules.size(); i < e; ++i) {
@@ -1183,7 +1191,7 @@ protected:
                                      m_options.file_name.c_str());
         return false;
       }
-
+    llvm::errs() << "11 DoExecute CommandObjectSource\n";
       if (num_matches > 1) {
         bool got_multiple = false;
         CompileUnit *test_cu = nullptr;
@@ -1207,7 +1215,7 @@ protected:
           return false;
         }
       }
-
+    llvm::errs() << "12 DoExecute CommandObjectSource\n";
       SymbolContext sc;
       if (sc_list.GetContextAtIndex(0, sc)) {
         if (sc.comp_unit) {
@@ -1237,6 +1245,7 @@ protected:
         }
       }
     }
+    llvm::errs() << "END DoExecute CommandObjectSource\n";
     return result.Succeeded();
   }
 

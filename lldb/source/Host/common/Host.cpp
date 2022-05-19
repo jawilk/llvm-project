@@ -116,7 +116,7 @@ llvm::Expected<HostThread> Host::StartMonitoringChildProcess(
       thread_name, MonitorChildProcessThreadFunction, info_ptr, 0);
 }
 
-#ifndef __linux__
+#if !defined(__linux__) && !defined(__EMSCRIPTEN__)
 // Scoped class that will disable thread canceling when it is constructed, and
 // exception safely restore the previous value it when it goes out of scope.
 class ScopedPThreadCancelDisabler {
@@ -140,7 +140,7 @@ private:
 };
 #endif // __linux__
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
 #if defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8))
 static __thread volatile sig_atomic_t g_usr1_called;
 #else
@@ -151,7 +151,7 @@ static void SigUsr1Handler(int) { g_usr1_called = 1; }
 #endif // __linux__
 
 static bool CheckForMonitorCancellation() {
-#ifdef __linux__
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
   if (g_usr1_called) {
     g_usr1_called = 0;
     return true;
@@ -183,7 +183,7 @@ static thread_result_t MonitorChildProcessThreadFunction(void *arg) {
 #endif
   const int options = __WALL;
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
   // This signal is only used to interrupt the thread from waitpid
   struct sigaction sigUsr1Action;
   memset(&sigUsr1Action, 0, sizeof(sigUsr1Action));
@@ -239,7 +239,7 @@ static thread_result_t MonitorChildProcessThreadFunction(void *arg) {
 
       // Scope for pthread_cancel_disabler
       {
-#ifndef __linux__
+#if !defined(__linux__) && !defined(__EMSCRIPTEN__)
         ScopedPThreadCancelDisabler pthread_cancel_disabler;
 #endif
 

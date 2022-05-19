@@ -129,6 +129,7 @@ bool SBFile::operator!() const {
 }
 
 FileSP SBFile::GetFile() const {
+  llvm::errs() << "SBFile::GetFile\n";
   LLDB_RECORD_METHOD_CONST_NO_ARGS(FileSP, SBFile, GetFile);
   return LLDB_RECORD_RESULT(m_opaque_sp);
 }

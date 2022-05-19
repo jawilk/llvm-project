@@ -58,12 +58,17 @@ using namespace lldb_private;
 DisassemblerSP Disassembler::FindPlugin(const ArchSpec &arch,
                                         const char *flavor,
                                         const char *plugin_name) {
+  llvm::errs() << "Disassembler::FindPlugin\n";
+  llvm::errs() << "GetArchitectureName: " << arch.GetArchitectureName() << "\n"; 
+  llvm::errs() << "flavor: " << flavor << "\n"; 
+  llvm::errs() << "plugin_name: " << plugin_name << "\n"; 
   LLDB_SCOPED_TIMERF("Disassembler::FindPlugin (arch = %s, plugin_name = %s)",
                      arch.GetArchitectureName(), plugin_name);
 
   DisassemblerCreateInstance create_callback = nullptr;
 
   if (plugin_name) {
+  llvm::errs() << "is plugin_name\n";
     ConstString const_plugin_name(plugin_name);
     create_callback = PluginManager::GetDisassemblerCreateCallbackForPluginName(
         const_plugin_name);
@@ -74,16 +79,20 @@ DisassemblerSP Disassembler::FindPlugin(const ArchSpec &arch,
         return disassembler_sp;
     }
   } else {
+  llvm::errs() << "no plugin_name\n";
     for (uint32_t idx = 0;
          (create_callback = PluginManager::GetDisassemblerCreateCallbackAtIndex(
               idx)) != nullptr;
          ++idx) {
       DisassemblerSP disassembler_sp(create_callback(arch, flavor));
 
-      if (disassembler_sp)
+      if (disassembler_sp) {
+          llvm::errs() << "is disassembler_sp\n";
         return disassembler_sp;
+	}
     }
   }
+          llvm::errs() << "no disassembler_sp\n";
   return DisassemblerSP();
 }
 

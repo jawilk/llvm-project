@@ -339,6 +339,7 @@ ProcessSP Process::FindPlugin(lldb::TargetSP target_sp,
                               ListenerSP listener_sp,
                               const FileSpec *crash_file_path,
                               bool can_connect) {
+  llvm::errs() << "Process::FindPlugin name: " << plugin_name << "\n";
   static uint32_t g_process_unique_id = 0;
 
   ProcessSP process_sp;
@@ -628,6 +629,7 @@ StateType Process::WaitForProcessToStop(const Timeout<std::micro> &timeout,
                                         EventSP *event_sp_ptr, bool wait_always,
                                         ListenerSP hijack_listener_sp,
                                         Stream *stream, bool use_run_lock) {
+  llvm::errs() << "Process::WaitForProcessToStop\n";
   // We can't just wait for a "stopped" event, because the stopped event may
   // have restarted the target. We have to actually check each event, and in
   // the case of a stopped event check the restarted flag on the event.
@@ -2978,6 +2980,7 @@ void Process::CompleteAttach() {
 }
 
 Status Process::ConnectRemote(llvm::StringRef remote_url) {
+  llvm::errs() << "Process::ConnectRemote url: " << remote_url << "\n";
   m_abi_sp.reset();
   m_process_input_reader.reset();
 
@@ -3006,6 +3009,7 @@ Status Process::ConnectRemote(llvm::StringRef remote_url) {
     else
       StartPrivateStateThread();
   }
+  llvm::errs() << "END Process::ConnectRemote\n";
   return error;
 }
 

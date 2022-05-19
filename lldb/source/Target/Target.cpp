@@ -203,6 +203,8 @@ const lldb::ProcessSP &Target::CreateProcess(ListenerSP listener_sp,
                                              llvm::StringRef plugin_name,
                                              const FileSpec *crash_file,
                                              bool can_connect) {
+  llvm::errs() << "&Target::CreateProcess\n";
+  llvm::errs() << "plugin_name: " << plugin_name << "\n";
   if (!listener_sp)
     listener_sp = GetDebugger().GetListener();
   DeleteCurrentProcess();
@@ -2340,7 +2342,7 @@ Target::CreateUtilityFunction(std::string expression, std::string name,
   return std::move(utility_fn);
 }
 
-void Target::SettingsInitialize() { 
+void Target::SettingsInitialize() {
   llvm::errs() << "Target::SettingsInitialize\n";
   Process::SettingsInitialize(); }
 
@@ -2911,6 +2913,7 @@ bool Target::SetSectionUnloaded(const lldb::SectionSP &section_sp,
 void Target::ClearAllLoadedSections() { m_section_load_history.Clear(); }
 
 Status Target::Launch(ProcessLaunchInfo &launch_info, Stream *stream) {
+  llvm::errs() << "Target::Launch\n";
   Status error;
   Log *log(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_TARGET));
 
@@ -2927,6 +2930,7 @@ Status Target::Launch(ProcessLaunchInfo &launch_info, Stream *stream) {
 
     if (process_sp) {
       state = process_sp->GetState();
+      llvm::errs() << "State: " << StateAsCString(state) << "\n";
       LLDB_LOGF(log,
                 "Target::%s the process exists, and its current state is %s",
                 __FUNCTION__, StateAsCString(state));
@@ -2989,6 +2993,7 @@ Status Target::Launch(ProcessLaunchInfo &launch_info, Stream *stream) {
     LLDB_LOGF(log, "Target::%s asking the platform to debug the process",
               __FUNCTION__);
 
+      llvm::errs() << "NOT eStateConnected\n";
     // If there was a previous process, delete it before we make the new one.
     // One subtle point, we delete the process before we release the reference
     // to m_process_sp.  That way even if we are the last owner, the process
@@ -2997,6 +3002,7 @@ Status Target::Launch(ProcessLaunchInfo &launch_info, Stream *stream) {
 
     m_process_sp =
         GetPlatform()->DebugProcess(launch_info, debugger, this, error);
+      llvm::errs() << "END NOT eStateConnected\n";
 
   } else {
     LLDB_LOGF(log,
@@ -3005,8 +3011,10 @@ Status Target::Launch(ProcessLaunchInfo &launch_info, Stream *stream) {
               __FUNCTION__);
 
     if (state == eStateConnected) {
+      llvm::errs() << "is eStateConnected\n";
       assert(m_process_sp);
     } else {
+      llvm::errs() << "NOT is eStateConnected\n";
       // Use a Process plugin to construct the process.
       const char *plugin_name = launch_info.GetProcessPluginName();
       CreateProcess(launch_info.GetListener(), plugin_name, nullptr, false);
@@ -3016,6 +3024,7 @@ Status Target::Launch(ProcessLaunchInfo &launch_info, Stream *stream) {
     if (m_process_sp)
       error = m_process_sp->Launch(launch_info);
   }
+  llvm::errs() << "MID Target::Launch\n";
 
   if (!m_process_sp && error.Success())
     error.SetErrorString("failed to launch or debug process");
@@ -3036,7 +3045,7 @@ Status Target::Launch(ProcessLaunchInfo &launch_info, Stream *stream) {
     launch_info.SetHijackListener(hijack_listener_sp);
     m_process_sp->HijackProcessEvents(hijack_listener_sp);
   }
-
+  llvm::errs() << "Before WaitProcessToStop()\n";
   switch (m_process_sp->WaitForProcessToStop(llvm::None, nullptr, false,
                                              hijack_listener_sp, nullptr)) {
   case eStateStopped: {

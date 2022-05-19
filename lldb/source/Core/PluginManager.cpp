@@ -227,8 +227,9 @@ public:
   }
 
   typename Instance::CallbackType GetCallbackAtIndex(uint32_t idx) {
-    if (Instance *instance = GetInstanceAtIndex(idx))
+    if (Instance *instance = GetInstanceAtIndex(idx)) {
       return instance->create_callback;
+      }
     return nullptr;
   }
 
@@ -310,6 +311,9 @@ static ArchitectureInstances &GetArchitectureInstances() {
 void PluginManager::RegisterPlugin(ConstString name,
                                    llvm::StringRef description,
                                    ArchitectureCreateInstance create_callback) {
+  llvm::errs() << "PluginManager::RegisterPlugin\n";
+  llvm::errs() << "name: " << name << "\n";
+  llvm::errs() << "description: " << description << "\n";
   GetArchitectureInstances().push_back(
       {name, std::string(description), create_callback});
 }
@@ -342,12 +346,14 @@ typedef PluginInstance<DisassemblerCreateInstance> DisassemblerInstance;
 typedef PluginInstances<DisassemblerInstance> DisassemblerInstances;
 
 static DisassemblerInstances &GetDisassemblerInstances() {
+  llvm::errs() << "DisassemblerInstances &GetDisassemblerInstances()\n";
   static DisassemblerInstances g_instances;
   return g_instances;
 }
 
 bool PluginManager::RegisterPlugin(ConstString name, const char *description,
                                    DisassemblerCreateInstance create_callback) {
+  llvm::errs() << "PluginManager::RegisterPlugin DisassemblerCreateInstance\n";
   return GetDisassemblerInstances().RegisterPlugin(name, description,
                                                    create_callback);
 }
@@ -359,6 +365,8 @@ bool PluginManager::UnregisterPlugin(
 
 DisassemblerCreateInstance
 PluginManager::GetDisassemblerCreateCallbackAtIndex(uint32_t idx) {
+  llvm::errs() << "PluginManager::GetDisassemblerCreateCallbackAtIndex\n";
+  llvm::errs() << "idx: " << idx << "\n";
   return GetDisassemblerInstances().GetCallbackAtIndex(idx);
 }
 

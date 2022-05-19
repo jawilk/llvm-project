@@ -772,6 +772,7 @@ lldb::SBTarget SBDebugger::CreateTarget(const char *filename,
                                         const char *platform_name,
                                         bool add_dependent_modules,
                                         lldb::SBError &sb_error) {
+  llvm::errs() << "SBDebugger::CreateTarget\n";
   LLDB_RECORD_METHOD(
       lldb::SBTarget, SBDebugger, CreateTarget,
       (const char *, const char *, const char *, bool, lldb::SBError &),
@@ -783,18 +784,18 @@ lldb::SBTarget SBDebugger::CreateTarget(const char *filename,
     sb_error.Clear();
     OptionGroupPlatform platform_options(false);
     platform_options.SetPlatformName(platform_name);
-
+  llvm::errs() << "m_opaque_sp SBDebugger::CreateTarget\n";
     sb_error.ref() = m_opaque_sp->GetTargetList().CreateTarget(
         *m_opaque_sp, filename, target_triple,
         add_dependent_modules ? eLoadDependentsYes : eLoadDependentsNo,
         &platform_options, target_sp);
-
+  llvm::errs() << "2 SBDebugger::CreateTarget\n";
     if (sb_error.Success())
       sb_target.SetSP(target_sp);
   } else {
     sb_error.SetErrorString("invalid debugger");
   }
-
+  llvm::errs() << "3 SBDebugger::CreateTarget\n";
   Log *log(GetLogIfAllCategoriesSet(LIBLLDB_LOG_API));
   LLDB_LOGF(log,
             "SBDebugger(%p)::CreateTarget (filename=\"%s\", triple=%s, "
@@ -803,7 +804,7 @@ lldb::SBTarget SBDebugger::CreateTarget(const char *filename,
             static_cast<void *>(m_opaque_sp.get()), filename, target_triple,
             platform_name, add_dependent_modules, sb_error.GetCString(),
             static_cast<void *>(target_sp.get()));
-
+  llvm::errs() << "END SBDebugger::CreateTarget\n";
   return LLDB_RECORD_RESULT(sb_target);
 }
 

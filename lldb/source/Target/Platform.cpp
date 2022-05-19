@@ -132,7 +132,7 @@ void PlatformProperties::SetDefaultModuleCacheDirectory(
 ///
 /// This platform will be used as the default platform when launching
 /// or attaching to processes unless another platform is specified.
-PlatformSP Platform::GetHostPlatform() { 
+PlatformSP Platform::GetHostPlatform() {
   llvm::errs() << "Platform::GetHostPlatform\n";
   return GetHostPlatformSP(); }
 
@@ -499,7 +499,7 @@ bool Platform::GetOSBuildString(std::string &s) {
   s.clear();
 
   if (IsHost())
-#if !defined(__linux__)
+#if !defined(__linux__) && !defined(__EMSCRIPTEN__)
     return HostInfo::GetOSBuildString(s);
 #else
     return false;
@@ -510,7 +510,7 @@ bool Platform::GetOSBuildString(std::string &s) {
 
 bool Platform::GetOSKernelDescription(std::string &s) {
   if (IsHost())
-#if !defined(__linux__)
+#if !defined(__linux__) && !defined(__EMSCRIPTEN__)
     return HostInfo::GetOSKernelDescription(s);
 #else
     return false;
@@ -1011,6 +1011,7 @@ uint32_t Platform::FindProcesses(const ProcessInstanceInfoMatch &match_info,
 }
 
 Status Platform::LaunchProcess(ProcessLaunchInfo &launch_info) {
+  llvm::errs() << "Platform::LaunchProcess\n";
   Status error;
   Log *log(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_PLATFORM));
   LLDB_LOGF(log, "Platform::%s()", __FUNCTION__);
@@ -1052,6 +1053,7 @@ Status Platform::LaunchProcess(ProcessLaunchInfo &launch_info) {
               __FUNCTION__, launch_info.GetResumeCount());
 
     error = Host::LaunchProcess(launch_info);
+    llvm::errs() << "After Host::LaunchProcess\n";
   } else
     error.SetErrorString(
         "base lldb_private::Platform class can't launch remote processes");
@@ -1095,6 +1097,7 @@ Platform::DebugProcess(ProcessLaunchInfo &launch_info, Debugger &debugger,
                        Target *target, // Can be nullptr, if nullptr create a
                                        // new target, else use existing one
                        Status &error) {
+  llvm::errs() << "Platform::DebugProcess\n";
   Log *log(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_PLATFORM));
   LLDB_LOGF(log, "Platform::%s entered (target %p)", __FUNCTION__,
             static_cast<void *>(target));
@@ -1131,6 +1134,7 @@ Platform::DebugProcess(ProcessLaunchInfo &launch_info, Debugger &debugger,
   }
 
   error = LaunchProcess(launch_info);
+  llvm::errs() << "After LaunchProcess in DebugProcess\n";
   if (error.Success()) {
     LLDB_LOGF(log,
               "Platform::%s LaunchProcess() call succeeded (pid=%" PRIu64 ")",
@@ -1282,6 +1286,7 @@ Status Platform::PutFile(const FileSpec &source, const FileSpec &destination,
 }
 
 Status Platform::GetFile(const FileSpec &source, const FileSpec &destination) {
+  llvm::errs() << "Platform::GetFile\n";
   Status error("unimplemented");
   return error;
 }
@@ -1803,6 +1808,8 @@ lldb::ProcessSP Platform::ConnectProcess(llvm::StringRef connect_url,
 lldb::ProcessSP Platform::ConnectProcessSynchronous(
     llvm::StringRef connect_url, llvm::StringRef plugin_name,
     Debugger &debugger, Stream &stream, Target *target, Status &error) {
+    llvm::errs() << "Platform::ConnectProcessSynchronous\n";
+    llvm::errs() << "url: " << connect_url << "\n";
   return DoConnectProcess(connect_url, plugin_name, debugger, &stream, target,
                           error);
 }
@@ -1811,6 +1818,7 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
                                            llvm::StringRef plugin_name,
                                            Debugger &debugger, Stream *stream,
                                            Target *target, Status &error) {
+  llvm::errs() << "Platform::DoConnectProcess\n";
   error.Clear();
 
   if (!target) {
@@ -1833,6 +1841,7 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
   if (!target || error.Fail())
     return nullptr;
 
+  llvm::errs() << "Before CreateProcess\n";
   lldb::ProcessSP process_sp =
       target->CreateProcess(debugger.GetListener(), plugin_name, nullptr, true);
 
@@ -1840,21 +1849,25 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
     return nullptr;
 
   // If this private method is called with a stream we are synchronous.
-  const bool synchronous = stream != nullptr;
+  //const bool synchronous = stream != nullptr;
+  const bool synchronous = false;
 
   ListenerSP listener_sp(
       Listener::MakeListener("lldb.Process.ConnectProcess.hijack"));
   if (synchronous)
     process_sp->HijackProcessEvents(listener_sp);
 
+  llvm::errs() << "Before ConnectRemote\n";
   error = process_sp->ConnectRemote(connect_url);
   if (error.Fail()) {
     if (synchronous)
       process_sp->RestoreProcessEvents();
     return nullptr;
   }
+  llvm::errs() << "MID Platform::DoConnectProcess\n";
 
   if (synchronous) {
+    llvm::errs() << "is synchronous\n";
     EventSP event_sp;
     process_sp->WaitForProcessToStop(llvm::None, &event_sp, true, listener_sp,
                                      nullptr);
@@ -1863,6 +1876,7 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
     Process::HandleProcessStateChangedEvent(event_sp, stream,
                                             pop_process_io_handler);
   }
+  llvm::errs() << "END Platform::DoConnectProcess\n";
 
   return process_sp;
 }

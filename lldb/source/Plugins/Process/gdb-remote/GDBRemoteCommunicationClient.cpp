@@ -108,6 +108,7 @@ bool GDBRemoteCommunicationClient::HandshakeWithServer(Status *error_ptr) {
 }
 
 bool GDBRemoteCommunicationClient::GetEchoSupported() {
+  llvm::errs() << "GDBRemoteCommunicationClient::GetEchoSupported\n";
   if (m_supports_qEcho == eLazyBoolCalculate) {
     GetRemoteQSupported();
   }
@@ -301,6 +302,7 @@ void GDBRemoteCommunicationClient::ResetDiscoverableSettings(bool did_exec) {
 }
 
 void GDBRemoteCommunicationClient::GetRemoteQSupported() {
+  llvm::errs() << "GDBRemoteCommunicationClient::GetRemoteQSupported\n";
   // Clear out any capabilities we expect to see in the qSupported response
   m_supports_qXfer_auxv_read = eLazyBoolNo;
   m_supports_qXfer_libraries_read = eLazyBoolNo;
@@ -327,6 +329,7 @@ void GDBRemoteCommunicationClient::GetRemoteQSupported() {
   }
 
   StringExtractorGDBRemote response;
+  llvm::errs() << "- Sending: " << packet.GetString() << "\n";
   if (SendPacketAndWaitForResponse(packet.GetString(), response) ==
       PacketResult::Success) {
     // Hang on to the qSupported packet, so that platforms can do custom
@@ -2666,7 +2669,7 @@ GDBRemoteCommunicationClient::SendSetCurrentThreadPacket(uint64_t tid,
     packet.Printf("%" PRIx64, tid);
 
   StringExtractorGDBRemote response;
-  if (SendPacketAndWaitForResponse(packet.GetString(), response) 
+  if (SendPacketAndWaitForResponse(packet.GetString(), response)
       == PacketResult::Success) {
     if (response.IsOKResponse())
       return {{pid, tid}};

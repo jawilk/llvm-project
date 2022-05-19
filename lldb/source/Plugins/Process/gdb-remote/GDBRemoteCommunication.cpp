@@ -133,11 +133,13 @@ GDBRemoteCommunication::SendPacketNoLock(llvm::StringRef payload) {
 GDBRemoteCommunication::PacketResult
 GDBRemoteCommunication::SendRawPacketNoLock(llvm::StringRef packet,
                                             bool skip_ack) {
+  llvm::errs() << "SendRawPacketNoLock\n";
   if (IsConnected()) {
     Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PACKETS));
     ConnectionStatus status = eConnectionStatusSuccess;
     const char *packet_data = packet.data();
     const size_t packet_length = packet.size();
+    llvm::errs() << "(gdb-remote) Packet: " << packet_data << "\n";
     size_t bytes_written = Write(packet_data, packet_length, status, nullptr);
     if (log) {
       size_t binary_start_offset = 0;

@@ -154,6 +154,7 @@ public:
 
 protected:
   bool DoExecute(Args &launch_args, CommandReturnObject &result) override {
+    llvm::errs() << "DoExecute CommandLaunch\n";
     Debugger &debugger = GetDebugger();
     Target *target = debugger.GetSelectedTarget().get();
     // If our listener is nullptr, users aren't allows to launch
@@ -237,6 +238,7 @@ protected:
 
     StreamString stream;
     Status error = target->Launch(m_options.launch_info, &stream);
+    llvm::errs() << "DoExecute after target->Launch\n";
 
     if (error.Success()) {
       ProcessSP process_sp(target->GetProcessSP());
@@ -764,6 +766,8 @@ public:
 
 protected:
   bool DoExecute(Args &command, CommandReturnObject &result) override {
+    llvm::errs() << "DoExecute COmmandObjectProcessConnect\n";
+    llvm::errs() << "Command: " << command.GetArgumentAtIndex(0) << "\n";
     if (command.GetArgumentCount() != 1) {
       result.AppendErrorWithFormat(
           "'%s' takes exactly one argument:\nUsage: %s\n", m_cmd_name.c_str(),

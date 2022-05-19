@@ -341,7 +341,7 @@ Status NativeFile::GetFileSpec(FileSpec &file_spec) const {
   } else {
     error.SetErrorString("invalid file handle");
   }
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__EMSCRIPTEN__)
   char proc[64];
   char path[PATH_MAX];
   if (::snprintf(proc, sizeof(proc), "/proc/self/fd/%d", GetDescriptor()) < 0)

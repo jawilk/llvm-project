@@ -406,6 +406,7 @@ CommandObjectDisassemble::GetRangesForSelectedMode(
 
 bool CommandObjectDisassemble::DoExecute(Args &command,
                                          CommandReturnObject &result) {
+  llvm::errs() << "CommandObjectDisassemble::DoExecute\n";
   Target *target = &GetSelectedTarget();
 
   if (!m_options.arch.IsValid())
@@ -424,12 +425,14 @@ bool CommandObjectDisassemble::DoExecute(Args &command,
       Disassembler::FindPlugin(m_options.arch, flavor_string, plugin_name);
 
   if (!disassembler) {
+  llvm::errs() << "!disassembler CommandObjectDisassemble::DoExecute\n";
     if (plugin_name) {
       result.AppendErrorWithFormat(
           "Unable to find Disassembler plug-in named '%s' that supports the "
           "'%s' architecture.\n",
           plugin_name, m_options.arch.GetArchitectureName());
     } else
+  llvm::errs() << "Unable to CommandObjectDisassemble::DoExecute\n";
       result.AppendErrorWithFormat(
           "Unable to find Disassembler plug-in for the '%s' architecture.\n",
           m_options.arch.GetArchitectureName());
@@ -474,7 +477,7 @@ bool CommandObjectDisassemble::DoExecute(Args &command,
     result.AppendError(toString(ranges.takeError()));
     return result.Succeeded();
   }
-
+  llvm::errs() << "MID CommandObjectDisassemble::DoExecute\n";
   bool print_sc_header = ranges->size() > 1;
   for (AddressRange cur_range : *ranges) {
     Disassembler::Limit limit;
@@ -505,6 +508,6 @@ bool CommandObjectDisassemble::DoExecute(Args &command,
     if (print_sc_header)
       result.GetOutputStream() << "\n";
   }
-
+  llvm::errs() << "END CommandObjectDisassemble::DoExecute\n";
   return result.Succeeded();
 }

@@ -52,12 +52,12 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
   if (!cont_lock)
     return eStateInvalid;
   OnRunPacketSent(true);
-  // The main ReadPacket loop wakes up at computed_timeout intervals, just to 
+  // The main ReadPacket loop wakes up at computed_timeout intervals, just to
   // check that the connection hasn't dropped.  When we wake up we also check
   // whether there is an interrupt request that has reached its endpoint.
-  // If we want a shorter interrupt timeout that kWakeupInterval, we need to 
+  // If we want a shorter interrupt timeout that kWakeupInterval, we need to
   // choose the shorter interval for the wake up as well.
-  std::chrono::seconds computed_timeout = std::min(interrupt_timeout, 
+  std::chrono::seconds computed_timeout = std::min(interrupt_timeout,
                                                    kWakeupInterval);
   for (;;) {
     PacketResult read_result = ReadPacket(response, computed_timeout, false);
@@ -182,6 +182,7 @@ GDBRemoteCommunication::PacketResult
 GDBRemoteClientBase::SendPacketAndWaitForResponse(
     llvm::StringRef payload, StringExtractorGDBRemote &response,
     std::chrono::seconds interrupt_timeout) {
+  llvm::errs() << "SendPacketAndWaitForResponse\n";
   Lock lock(*this, interrupt_timeout);
   if (!lock) {
     if (Log *log =
@@ -201,6 +202,8 @@ GDBRemoteClientBase::SendPacketAndReceiveResponseWithOutputSupport(
     llvm::StringRef payload, StringExtractorGDBRemote &response,
     std::chrono::seconds interrupt_timeout,
     llvm::function_ref<void(llvm::StringRef)> output_callback) {
+  llvm::errs() << "SendPacketAndReceiveResponseWithOutputSupport\n";
+  llvm::errs() << "- Packet: " << payload << "\n";
   Lock lock(*this, interrupt_timeout);
   if (!lock) {
     if (Log *log =

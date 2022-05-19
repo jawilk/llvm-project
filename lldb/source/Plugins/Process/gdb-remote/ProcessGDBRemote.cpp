@@ -219,6 +219,7 @@ std::chrono::seconds ProcessGDBRemote::GetPacketTimeout() {
 
 bool ProcessGDBRemote::CanDebug(lldb::TargetSP target_sp,
                                 bool plugin_specified_by_name) {
+  llvm::errs() << "ProcessGDBRemote::CanDebug\n";
   if (plugin_specified_by_name)
     return true;
 
@@ -635,6 +636,7 @@ Status ProcessGDBRemote::WillAttachToProcessWithName(const char *process_name,
 }
 
 Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
+  llvm::errs() << "ProcessGDBRemote::DoConnectRemote url: " << remote_url << "\n";
   Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PROCESS));
   Status error(WillLaunchOrAttach());
 
@@ -646,6 +648,7 @@ Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
   else
     error = ConnectToDebugserver(remote_url);
 
+  llvm::errs() << "After ConnectToDebugserverProcessGDBRemote::DoConnectRemote\n";
   if (error.Fail())
     return error;
   StartAsyncThread();
@@ -726,7 +729,7 @@ Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
     else
       SetUnixSignals(UnixSignals::Create(GetTarget().GetArchitecture()));
   }
-
+  llvm::errs() << "END ProcessGDBRemote::DoConnectRemote\n";
   return error;
 }
 
@@ -942,22 +945,31 @@ Status ProcessGDBRemote::DoLaunch(lldb_private::Module *exe_module,
 }
 
 Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
+  llvm::errs() << "ProcessGDBRemote::ConnectToDebugserver\n";
   Status error;
   // Only connect if we have a valid connect URL
   Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PROCESS));
 
   if (!connect_url.empty()) {
+
+    llvm::errs() << "(gdb-remote) Connecting to: " << connect_url << "\n";
+
     LLDB_LOGF(log, "ProcessGDBRemote::%s Connecting to %s", __FUNCTION__,
               connect_url.str().c_str());
+  }
     std::unique_ptr<ConnectionFileDescriptor> conn_up(
         new ConnectionFileDescriptor());
     if (conn_up) {
       const uint32_t max_retry_count = 50;
+      llvm::errs() << "NOT is eStateConnected\n";
+      llvm::errs() << "NOT is eStateConnected\n";
       uint32_t retry_count = 0;
       while (!m_gdb_comm.IsConnected()) {
-        if (conn_up->Connect(connect_url, &error) == eConnectionStatusSuccess) {
+      //if (conn_up->Connect(connect_url, &error) == eConnectionStatusSuccess) {
+          conn_up->Connect(connect_url, &error);
           m_gdb_comm.SetConnection(std::move(conn_up));
           break;
+        /*  break;
         } else if (error.WasInterrupted()) {
           // If we were interrupted, don't keep retrying.
           break;
@@ -968,17 +980,17 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
         if (retry_count >= max_retry_count)
           break;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));*/
       }
     }
-  }
+ //}
 
   if (!m_gdb_comm.IsConnected()) {
     if (error.Success())
       error.SetErrorString("not connected to remote gdb server");
     return error;
   }
-
+  llvm::errs() << "GetNonStopModeEnabled: " << GetTarget().GetNonStopModeEnabled() << "\n";
   // Start the communications read thread so all incoming data can be parsed
   // into packets and queued as they arrive.
   if (GetTarget().GetNonStopModeEnabled())
@@ -995,10 +1007,12 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
     return error;
   }
 
+  llvm::errs() << "IsConnected(): " << m_gdb_comm.IsConnected() << "\n";
   // Send $QNonStop:1 packet on startup if required
   if (GetTarget().GetNonStopModeEnabled())
     GetTarget().SetNonStopModeEnabled(m_gdb_comm.SetNonStopMode(true));
 
+  llvm::errs() << "Before send init packages\n";
   m_gdb_comm.GetEchoSupported();
   m_gdb_comm.GetThreadSuffixSupported();
   m_gdb_comm.GetListThreadsInStopReplySupported();
@@ -1011,12 +1025,15 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
   if (GetTarget().GetNonStopModeEnabled())
     m_gdb_comm.GetDefaultThreadId(m_initial_tid);
 
+  llvm::errs() << "MID ProcessGDBRemote::ConnectToDebugserver\n";
+
   size_t num_cmds = GetExtraStartupCommands().GetArgumentCount();
   for (size_t idx = 0; idx < num_cmds; idx++) {
     StringExtractorGDBRemote response;
     m_gdb_comm.SendPacketAndWaitForResponse(
         GetExtraStartupCommands().GetArgumentAtIndex(idx), response);
   }
+  llvm::errs() << "END ProcessGDBRemote::ConnectToDebugserver\n";
   return error;
 }
 
@@ -3736,7 +3753,7 @@ thread_result_t ProcessGDBRemote::AsyncThread(void *arg) {
   // So it is safer to simply ignore any remaining packets by
   // explicitly checking for eStateExited before reentering the
   // fetch loop.
-  
+
   bool done = false;
   while (!done && process->GetPrivateState() != eStateExited) {
     LLDB_LOGF(log,

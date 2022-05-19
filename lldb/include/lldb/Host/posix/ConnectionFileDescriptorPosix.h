@@ -38,6 +38,7 @@ public:
   static const char *UNIX_ABSTRACT_CONNECT_SCHEME;
   static const char *FD_SCHEME;
   static const char *FILE_SCHEME;
+  static const char *JAVASCRIPT_SCHEME;
 
   ConnectionFileDescriptor(bool child_processes_inherit = false);
 

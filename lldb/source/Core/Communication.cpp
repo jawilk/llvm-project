@@ -114,6 +114,7 @@ ConnectionStatus Communication::Disconnect(Status *error_ptr) {
 }
 
 bool Communication::IsConnected() const {
+  llvm::errs() << "Communication::IsConnected\n";
   lldb::ConnectionSP connection_sp(m_connection_sp);
   return (connection_sp ? connection_sp->IsConnected() : false);
 }
@@ -411,6 +412,7 @@ void Communication::SynchronizeWithReadThread() {
 }
 
 void Communication::SetConnection(std::unique_ptr<Connection> connection) {
+  llvm::errs() << "Communication::SetConnection\n";
   Disconnect(nullptr);
   StopReadThread(nullptr);
   m_connection_sp = std::move(connection);

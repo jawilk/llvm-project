@@ -154,6 +154,7 @@ size_t SourceManager::DisplaySourceLinesWithLineNumbersUsingLastFile(
     uint32_t start_line, uint32_t count, uint32_t curr_line, uint32_t column,
     const char *current_line_cstr, Stream *s,
     const SymbolContextList *bp_locs) {
+  llvm::errs() << "SourceManager::DisplaySourceLinesWithLineNumbersUsingLastFile\n";
   if (count == 0)
     return 0;
 
@@ -176,6 +177,7 @@ size_t SourceManager::DisplaySourceLinesWithLineNumbersUsingLastFile(
   m_last_count = count;
 
   if (FileSP last_file_sp = GetLastFile()) {
+  llvm::errs() << "1 SourceManager::DisplaySourceLinesWithLineNumbersUsingLastFile\n";
     const uint32_t end_line = start_line + count - 1;
     for (uint32_t line = start_line; line <= end_line; ++line) {
       if (!last_file_sp->LineIsValid(line)) {
@@ -265,6 +267,7 @@ size_t SourceManager::DisplaySourceLinesWithLineNumbers(
 
 size_t SourceManager::DisplayMoreWithLineNumbers(
     Stream *s, uint32_t count, bool reverse, const SymbolContextList *bp_locs) {
+  llvm::errs() << "SourceManager::DisplayMoreWithLineNumbers\n";
   // If we get called before anybody has set a default file and line, then try
   // to figure it out here.
   FileSP last_file_sp(GetLastFile());
@@ -273,12 +276,14 @@ size_t SourceManager::DisplayMoreWithLineNumbers(
     FileSpec tmp_spec;
     uint32_t tmp_line;
     GetDefaultFileAndLine(tmp_spec, tmp_line);
+    llvm::errs() << "Directory name: " << tmp_spec.GetDirectory() << "\n";
+    llvm::errs() << "File name: " << tmp_spec.GetFilename() << "\n";
   }
-
+  llvm::errs() << "1 SourceManager::DisplayMoreWithLineNumbers\n";
   if (last_file_sp) {
     if (m_last_line == UINT32_MAX)
       return 0;
-
+  llvm::errs() << "2 SourceManager::DisplayMoreWithLineNumbers\n";
     if (reverse && m_last_line == 1)
       return 0;
 
@@ -305,6 +310,7 @@ size_t SourceManager::DisplayMoreWithLineNumbers(
     return DisplaySourceLinesWithLineNumbersUsingLastFile(
         m_last_line, m_last_count, UINT32_MAX, column, "", s, bp_locs);
   }
+  llvm::errs() << "END ret 0 SourceManager::DisplayMoreWithLineNumbers\n";
   return 0;
 }
 
@@ -323,6 +329,7 @@ bool SourceManager::SetDefaultFileAndLine(const FileSpec &file_spec,
 }
 
 bool SourceManager::GetDefaultFileAndLine(FileSpec &file_spec, uint32_t &line) {
+  llvm::errs() << "SourceManager::GetDefaultFileAndLine\n";
   if (FileSP last_file_sp = GetLastFile()) {
     file_spec = m_last_file_spec;
     line = m_last_line;
@@ -331,6 +338,7 @@ bool SourceManager::GetDefaultFileAndLine(FileSpec &file_spec, uint32_t &line) {
     TargetSP target_sp(m_target_wp.lock());
 
     if (target_sp) {
+  llvm::errs() << "2 SourceManager::GetDefaultFileAndLine\n";
       // If nobody has set the default file and line then try here.  If there's
       // no executable, then we will try again later when there is one.
       // Otherwise, if we can't find it we won't look again, somebody will have
@@ -356,6 +364,8 @@ bool SourceManager::GetDefaultFileAndLine(FileSpec &file_spec, uint32_t &line) {
               SetDefaultFileAndLine(line_entry.file, line_entry.line);
               file_spec = m_last_file_spec;
               line = m_last_line;
+  llvm::errs() << "3 m_last_line: " << line << "\n";
+  llvm::errs() << "3 SourceManager::GetDefaultFileAndLine\n";
               return true;
             }
           }
@@ -547,6 +557,7 @@ size_t SourceManager::File::DisplaySourceLines(uint32_t line,
                                                uint32_t context_before,
                                                uint32_t context_after,
                                                Stream *s) {
+  llvm::errs() << "SourceManager::File::DisplaySourceLines\n";
   // Nothing to write if there's no stream.
   if (!s)
     return 0;

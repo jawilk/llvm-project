@@ -16,6 +16,7 @@
 #include "lldb/Host/posix/ConnectionFileDescriptorPosix.h"
 #include "lldb/Host/Config.h"
 #include "lldb/Host/Socket.h"
+#include "lldb/Host/JavascriptSocket.h"
 #include "lldb/Host/SocketAddress.h"
 #include "lldb/Utility/SelectHelper.h"
 #include "lldb/Utility/Timeout.h"
@@ -61,6 +62,7 @@ const char *ConnectionFileDescriptor::UNIX_ABSTRACT_CONNECT_SCHEME =
     "unix-abstract-connect";
 const char *ConnectionFileDescriptor::FD_SCHEME = "fd";
 const char *ConnectionFileDescriptor::FILE_SCHEME = "file";
+const char *ConnectionFileDescriptor::JAVASCRIPT_SCHEME = "javascript";
 
 namespace {
 
@@ -143,12 +145,14 @@ void ConnectionFileDescriptor::CloseCommandPipe() {
 }
 
 bool ConnectionFileDescriptor::IsConnected() const {
+  llvm::errs() << "posix IsConnected\n";
   return (m_read_sp && m_read_sp->IsValid()) ||
          (m_write_sp && m_write_sp->IsValid());
 }
 
 ConnectionStatus ConnectionFileDescriptor::Connect(llvm::StringRef path,
-                                                   Status *error_ptr) {
+                                       :q            Status *error_ptr) {
+  llvm::errs() << "ConnectionFileDescriptor::Connect\n";
   std::lock_guard<std::recursive_mutex> guard(m_mutex);
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOGF(log, "%p ConnectionFileDescriptor::Connect (url = '%s')",
@@ -168,6 +172,7 @@ ConnectionStatus ConnectionFileDescriptor::Connect(llvm::StringRef path,
       // unix://SOCKNAME
       return NamedSocketAccept(*addr, error_ptr);
     } else if ((addr = GetURLAddress(path, CONNECT_SCHEME))) {
+        llvm::errs() << "TCP\n";
       return ConnectTCP(*addr, error_ptr);
     } else if ((addr = GetURLAddress(path, TCP_CONNECT_SCHEME))) {
       return ConnectTCP(*addr, error_ptr);
@@ -180,6 +185,9 @@ ConnectionStatus ConnectionFileDescriptor::Connect(llvm::StringRef path,
       // unix-abstract-connect://SOCKNAME
       return UnixAbstractSocketConnect(*addr, error_ptr);
     }
+    else if ((addr = GetURLAddress(path, JAVASCRIPT_SCHEME))) {
+      // javascript://PLACEHOLDER
+      return ConnectJAVASCRIPT(*addr, error_ptr);
 #if LLDB_ENABLE_POSIX
     else if ((addr = GetURLAddress(path, FD_SCHEME))) {
       // Just passing a native file descriptor within this current process that
@@ -722,8 +730,31 @@ ConnectionFileDescriptor::SocketListenAndAccept(llvm::StringRef s,
   return eConnectionStatusSuccess;
 }
 
+ConnectionStatus ConnectionFileDescriptor::ConnectJAVASCRIPT(llvm::StringRef s,
+                                                      Status *error_ptr) {
+  llvm::errs() << "ConnectJAVASCRIPT\n";
+  if (error_ptr)
+    *error_ptr = Status();
+
+  llvm::Expected<std::unique_ptr<JavacriptSocket>> socket =
+      JavascriptSocket::Connect();
+  if (!socket) {
+    if (error_ptr)
+      *error_ptr = socket.takeError();
+    else
+      LLDB_LOG_ERROR(GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION),
+                     socket.takeError(), "tcp connect failed: {0}");
+    return eConnectionStatusError;
+  }
+  m_write_sp = std::move(*socket);
+  m_read_sp = m_write_sp;
+  m_uri.assign(std::string(s));
+  return eConnectionStatusSuccess;
+}
+
 ConnectionStatus ConnectionFileDescriptor::ConnectTCP(llvm::StringRef s,
                                                       Status *error_ptr) {
+  llvm::errs() << "ConnectTCP\n";
   if (error_ptr)
     *error_ptr = Status();
 
