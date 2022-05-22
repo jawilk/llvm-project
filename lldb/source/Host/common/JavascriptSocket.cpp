@@ -1,4 +1,4 @@
-//===-- Socket.cpp --------------------------------------------------------===//
+//===-- JavascriptSocket.cpp --------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,237 +6,101 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "lldb/Host/JavascriptSocket.h"
+#if defined(_MSC_VER)
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#endif
+
+#include "lldb/Host/common/JavascriptSocket.h"
 
 #include "lldb/Host/Config.h"
-#include "lldb/Host/Host.h"
-#include "lldb/Host/SocketAddress.h"
-#include "lldb/Host/StringConvert.h"
+#include "lldb/Host/MainLoop.h"
 #include "lldb/Utility/Log.h"
-#include "lldb/Utility/RegularExpression.h"
 
-#include "llvm/ADT/STLExtras.h"
+#include "llvm/Config/llvm-config.h"
 #include "llvm/Support/Errno.h"
-#include "llvm/Support/Error.h"
 #include "llvm/Support/WindowsError.h"
+#include "llvm/Support/raw_ostream.h"
 
 #if LLDB_ENABLE_POSIX
-#include "lldb/Host/posix/DomainSocket.h"
-
 #include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
-#include <sys/un.h>
+#endif
+
+#if defined(_WIN32)
+#include <winsock2.h>
+#endif
+
+#ifdef _WIN32
+#define CLOSE_SOCKET closesocket
+typedef const char *set_socket_option_arg_type;
+#else
 #include <unistd.h>
+#define CLOSE_SOCKET ::close
+typedef const void *set_socket_option_arg_type;
 #endif
 
 using namespace lldb;
 using namespace lldb_private;
 
-typedef const void *set_socket_option_arg_type;
-typedef void *get_socket_option_arg_type;
-const NativeSocket Socket::kInvalidSocketValue = -1;
+static Status GetLastSocketError() {
+  std::error_code EC;
+#ifdef _WIN32
+  EC = llvm::mapWindowsError(WSAGetLastError());
+#else
+  EC = std::error_code(errno, std::generic_category());
+#endif
+  return EC;
+}
 
 namespace {
-
-bool IsInterrupted() {
-  return errno == EINTR;
+const int kType = SOCK_STREAM;
 }
-}
+JavascriptSocket::JavascriptSocket(bool should_close, bool child_processes_inherit)
+    : Socket(ProtocolJavascript, should_close, child_processes_inherit) {}
+JavascriptSocket::~JavascriptSocket() { }
 
-JavascriptSocket::JavascriptSocket()
-    : IOObject(eFDTypeSocket) {}
-
-JavascriptSocket::~JavascriptSocket() { Close(); }
-
-llvm::Error JavascriptSocket::Initialize() {
-
-  return llvm::Error::success();
+bool JavascriptSocket::IsValid() const {
+  //llvm::errs() << "JavascriptSocket::" << __FUNCTION__ << "\n";
+  return true;
 }
 
-void JavascriptSocket::Terminate() {
-}
-
-std::unique_ptr<Socket> JavascriptSocket::Create(Status &error) {
-  error.Clear();
-
-  std::unique_ptr<JavascriptSocket> socket_up = std::make_unique<JavascriptSocket>();
-
+Status JavascriptSocket::CreateSocket(int domain) {
+  llvm::errs() << "JavascriptSocket::" << __FUNCTION__ << "\n";
+  Status error;
+  if (IsValid())
+    error = Close();
   if (error.Fail())
-    socket_up.reset();
-
-  return socket_up;
-}
-
-llvm::Expected<std::unique_ptr<JavascriptSocket>>
-JavascriptSocket::Connect(llvm::StringRef host_and_port) {
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
-  LLDB_LOG(log, "host_and_port = {0}", host_and_port);
-
-  Status error;
-  std::unique_ptr<JavascriptSocket> connect_socket(
-      Create(error));
-  if (error.Fail())
-    return error.ToError();
-
-  error = connect_socket->Connect(host_and_port);
-  if (error.Success())
-    return std::move(connect_socket);
-
-  return error.ToError();
-}
-
-bool Socket::DecodeHostAndPort(llvm::StringRef host_and_port,
-                               std::string &host_str, std::string &port_str,
-                               int32_t &port, Status *error_ptr) {
-  static RegularExpression g_regex(
-      llvm::StringRef("([^:]+|\\[[0-9a-fA-F:]+.*\\]):([0-9]+)"));
-  llvm::SmallVector<llvm::StringRef, 3> matches;
-  if (g_regex.Execute(host_and_port, &matches)) {
-    host_str = matches[1].str();
-    port_str = matches[2].str();
-    // IPv6 addresses are wrapped in [] when specified with ports
-    if (host_str.front() == '[' && host_str.back() == ']')
-      host_str = host_str.substr(1, host_str.size() - 2);
-    bool ok = false;
-    port = StringConvert::ToUInt32(port_str.c_str(), UINT32_MAX, 10, &ok);
-    if (ok && port <= UINT16_MAX) {
-      if (error_ptr)
-        error_ptr->Clear();
-      return true;
-    }
-    // port is too large
-    if (error_ptr)
-      error_ptr->SetErrorStringWithFormat(
-          "invalid host:port specification: '%s'", host_and_port.str().c_str());
-    return false;
-  }
-
-  // If this was unsuccessful, then check if it's simply a signed 32-bit
-  // integer, representing a port with an empty host.
-  host_str.clear();
-  port_str.clear();
-  if (to_integer(host_and_port, port, 10) && port < UINT16_MAX) {
-    port_str = std::string(host_and_port);
-    if (error_ptr)
-      error_ptr->Clear();
-    return true;
-  }
-
-  if (error_ptr)
-    error_ptr->SetErrorStringWithFormat("invalid host:port specification: '%s'",
-                                        host_and_port.str().c_str());
-  return false;
-}
-
-IOObject::WaitableHandle JavascriptSocket::GetWaitableHandle() {
-  return m_socket;
-}
-
-Status JavascriptSocket::Read(void *buf, size_t &num_bytes) {
-  Status error;
-  int bytes_received = 0;
-  do {
-    bytes_received = ::recv(m_socket, static_cast<char *>(buf), num_bytes, 0);
-  } while (bytes_received < 0 && IsInterrupted());
-
-  if (bytes_received < 0) {
-    SetLastError(error);
-    num_bytes = 0;
-  } else
-    num_bytes = bytes_received;
-
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
-  if (log) {
-    LLDB_LOGF(log,
-              "%p Socket::Read() (socket = %" PRIu64
-              ", src = %p, src_len = %" PRIu64 ", flags = 0) => %" PRIi64
-              " (error = %s)",
-              static_cast<void *>(this), static_cast<uint64_t>(m_socket), buf,
-              static_cast<uint64_t>(num_bytes),
-              static_cast<int64_t>(bytes_received), error.AsCString());
-  }
-
-  return error;
-}
-
-Status JavascriptSocket::Write(const void *buf, size_t &num_bytes) {
-  const size_t src_len = num_bytes;
-  Status error;
-  int bytes_sent = 0;
-  do {
-    bytes_sent = Send(buf, num_bytes);
-  } while (bytes_sent < 0 && IsInterrupted());
-
-  if (bytes_sent < 0) {
-    SetLastError(error);
-    num_bytes = 0;
-  } else
-    num_bytes = bytes_sent;
-
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
-  if (log) {
-    LLDB_LOGF(log,
-              "%p Socket::Write() (socket = %" PRIu64
-              ", src = %p, src_len = %" PRIu64 ", flags = 0) => %" PRIi64
-              " (error = %s)",
-              static_cast<void *>(this), static_cast<uint64_t>(m_socket), buf,
-              static_cast<uint64_t>(src_len),
-              static_cast<int64_t>(bytes_sent), error.AsCString());
-  }
-
-  return error;
-}
-
-Status JavascriptSocket::PreDisconnect() {
-  Status error;
-  return error;
-}
-
-Status JavascriptSocket::Close() {
-  Status error;
-  if (!IsValid() || !m_should_close_fd)
     return error;
-
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
-  LLDB_LOGF(log, "%p Socket::Close (fd = %" PRIu64 ")",
-            static_cast<void *>(this), static_cast<uint64_t>(m_socket));
-
-#if defined(_WIN32)
-  bool success = !!closesocket(m_socket);
-#else
-  bool success = !!::close(m_socket);
-#endif
-  // A reference to a FD was passed in, set it to an invalid value
-  m_socket = kInvalidSocketValue;
-  if (!success) {
-    SetLastError(error);
-  }
-
+  m_socket = 1;/*Socket::CreateSocket(domain, kType, IPPROTO_TCP,
+                                  m_child_processes_inherit, error);*/
   return error;
 }
 
-int JavascriptSocket::GetOption(int level, int option_name, int &option_value) {
-  get_socket_option_arg_type option_value_p =
-      reinterpret_cast<get_socket_option_arg_type>(&option_value);
-  socklen_t option_value_size = sizeof(int);
-  return ::getsockopt(m_socket, level, option_name, option_value_p,
-                      &option_value_size);
+Status JavascriptSocket::Connect(llvm::StringRef name) {
+  llvm::errs() << "JavascriptSocket::Connect\n"; 
+
+  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
+  LLDB_LOGF(log, "JavascriptSocket::%s (host/port = %s)", __FUNCTION__, "javascript");
+
+  Status error;
+  error = CreateSocket(0);
+  error.Clear();
+  return error;
 }
 
-int JavascriptSocket::SetOption(int level, int option_name, int option_value) {
-  set_socket_option_arg_type option_value_p =
-      reinterpret_cast<get_socket_option_arg_type>(&option_value);
-  return ::setsockopt(m_socket, level, option_name, option_value_p,
-                      sizeof(option_value));
+Status JavascriptSocket::Listen(llvm::StringRef name, int backlog) {
+  llvm::errs() << "JavascriptSocket::" << __FUNCTION__ << "\n";
+  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
+  LLDB_LOGF(log, "JavascriptSocket::%s (%s)", __FUNCTION__, name.data());
+  
+  return Status();
 }
 
-size_t JavascriptSocket::Send(const void *buf, const size_t num_bytes) {
-  return ::send(m_socket, static_cast<const char *>(buf), num_bytes, 0);
-}
-
-void JavascriptSocket::SetLastError(Status &error) {
-  error.SetErrorToErrno();
+Status JavascriptSocket::Accept(Socket *&conn_socket) {
+  llvm::errs() << "JavascriptSocket::" << __FUNCTION__ << "\n";
+  Status error;
+  
+  error.Clear();
+  return error;
 }

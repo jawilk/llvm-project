@@ -99,6 +99,7 @@ char GDBRemoteCommunication::CalculcateChecksum(llvm::StringRef payload) {
 }
 
 size_t GDBRemoteCommunication::SendAck() {
+  llvm::errs() << "GDBRemoteCommunication::SendAck\n";
   Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PACKETS));
   ConnectionStatus status = eConnectionStatusSuccess;
   char ch = '+';
@@ -228,6 +229,7 @@ GDBRemoteCommunication::PacketResult
 GDBRemoteCommunication::ReadPacket(StringExtractorGDBRemote &response,
                                    Timeout<std::micro> timeout,
                                    bool sync_on_timeout) {
+  llvm::errs() << "GDBRemoteCommunication::ReadPacket\n";
   if (m_read_thread_enabled)
     return PopPacketFromQueue(response, timeout);
   else
@@ -268,6 +270,7 @@ GDBRemoteCommunication::PacketResult
 GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
                                             Timeout<std::micro> timeout,
                                             bool sync_on_timeout) {
+  llvm::errs() << "GDBRemoteCommunication::WaitForPacketNoLock\n";
   uint8_t buffer[8192];
   Status error;
 
@@ -276,13 +279,13 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
   // Check for a packet from our cache first without trying any reading...
   if (CheckForPacket(nullptr, 0, packet) != PacketType::Invalid)
     return PacketResult::Success;
-
+  llvm::errs() << "After CheckForPacket\n";
   bool timed_out = false;
   bool disconnected = false;
   while (IsConnected() && !timed_out) {
     lldb::ConnectionStatus status = eConnectionStatusNoConnection;
     size_t bytes_read = Read(buffer, sizeof(buffer), timeout, status, &error);
-
+    llvm::errs() << "After Read() bytes_read: " << bytes_read << "\n";
     LLDB_LOGV(log,
               "Read(buffer, sizeof(buffer), timeout = {0}, "
               "status = {1}, error = {2}) => bytes_read = {3}",
@@ -290,9 +293,13 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
               bytes_read);
 
     if (bytes_read > 0) {
-      if (CheckForPacket(buffer, bytes_read, packet) != PacketType::Invalid)
+      if (CheckForPacket(buffer, bytes_read, packet) != PacketType::Invalid) {
+      llvm::errs() << "PacketResult::Success\n";
         return PacketResult::Success;
+}
+      llvm::errs() << "NOT PacketResult::Success\n";
     } else {
+      llvm::errs() << "else\n";
       switch (status) {
       case eConnectionStatusTimedOut:
       case eConnectionStatusInterrupted:
@@ -402,6 +409,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
       }
     }
   }
+  llvm::errs() << "After while\n";
   packet.Clear();
   if (disconnected)
     return PacketResult::ErrorDisconnected;
@@ -643,6 +651,7 @@ bool GDBRemoteCommunication::DecompressPacket() {
 GDBRemoteCommunication::PacketType
 GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
                                        StringExtractorGDBRemote &packet) {
+  llvm::errs() << "GDBRemoteCommunication::CheckForPacket\n";
   // Put the packet data into the buffer in a thread safe fashion
   std::lock_guard<std::recursive_mutex> guard(m_bytes_mutex);
 

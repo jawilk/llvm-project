@@ -1061,6 +1061,7 @@ void SBDebugger::SetSelectedTarget(SBTarget &sb_target) {
 }
 
 SBPlatform SBDebugger::GetSelectedPlatform() {
+  llvm::errs() << "SBDebugger::GetSelectedPlatform\n";
   LLDB_RECORD_METHOD_NO_ARGS(lldb::SBPlatform, SBDebugger, GetSelectedPlatform);
 
   Log *log(GetLogIfAllCategoriesSet(LIBLLDB_LOG_API));

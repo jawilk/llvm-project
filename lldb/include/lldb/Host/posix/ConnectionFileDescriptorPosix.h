@@ -22,6 +22,7 @@
 
 namespace lldb_private {
 
+class JavascriptSocket;
 class Status;
 class Socket;
 class SocketAddress;
@@ -81,6 +82,9 @@ protected:
 
   lldb::ConnectionStatus SocketListenAndAccept(llvm::StringRef host_and_port,
                                                Status *error_ptr);
+
+  lldb::ConnectionStatus ConnectJavascript(llvm::StringRef host_and_port,
+                                    Status *error_ptr);
 
   lldb::ConnectionStatus ConnectTCP(llvm::StringRef host_and_port,
                                     Status *error_ptr);

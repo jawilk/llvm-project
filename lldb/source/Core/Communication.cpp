@@ -114,7 +114,6 @@ ConnectionStatus Communication::Disconnect(Status *error_ptr) {
 }
 
 bool Communication::IsConnected() const {
-  llvm::errs() << "Communication::IsConnected\n";
   lldb::ConnectionSP connection_sp(m_connection_sp);
   return (connection_sp ? connection_sp->IsConnected() : false);
 }
@@ -126,6 +125,7 @@ bool Communication::HasConnection() const {
 size_t Communication::Read(void *dst, size_t dst_len,
                            const Timeout<std::micro> &timeout,
                            ConnectionStatus &status, Status *error_ptr) {
+  //llvm::errs() << "Communication::Read\n";
   Log *log = GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION);
   LLDB_LOG(
       log,
@@ -165,7 +165,7 @@ size_t Communication::Read(void *dst, size_t dst_len,
     }
     return 0;
   }
-
+  //llvm::errs() << "No threads\n";
   // We aren't using a read thread, just read the data synchronously in this
   // thread.
   return ReadFromConnection(dst, dst_len, timeout, status, error_ptr);
@@ -293,10 +293,10 @@ size_t Communication::ReadFromConnection(void *dst, size_t dst_len,
                                          const Timeout<std::micro> &timeout,
                                          ConnectionStatus &status,
                                          Status *error_ptr) {
+  //llvm::errs() << "Communication::ReadFromConnection\n";
   lldb::ConnectionSP connection_sp(m_connection_sp);
   if (connection_sp)
     return connection_sp->Read(dst, dst_len, timeout, status, error_ptr);
-
   if (error_ptr)
     error_ptr->SetErrorString("Invalid connection.");
   status = eConnectionStatusNoConnection;

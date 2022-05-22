@@ -956,20 +956,15 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
 
     LLDB_LOGF(log, "ProcessGDBRemote::%s Connecting to %s", __FUNCTION__,
               connect_url.str().c_str());
-  }
     std::unique_ptr<ConnectionFileDescriptor> conn_up(
         new ConnectionFileDescriptor());
     if (conn_up) {
       const uint32_t max_retry_count = 50;
-      llvm::errs() << "NOT is eStateConnected\n";
-      llvm::errs() << "NOT is eStateConnected\n";
       uint32_t retry_count = 0;
       while (!m_gdb_comm.IsConnected()) {
-      //if (conn_up->Connect(connect_url, &error) == eConnectionStatusSuccess) {
-          conn_up->Connect(connect_url, &error);
+        if (conn_up->Connect(connect_url, &error) == eConnectionStatusSuccess) {
           m_gdb_comm.SetConnection(std::move(conn_up));
           break;
-        /*  break;
         } else if (error.WasInterrupted()) {
           // If we were interrupted, don't keep retrying.
           break;
@@ -980,11 +975,11 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
         if (retry_count >= max_retry_count)
           break;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));*/
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
     }
- //}
-
+  }
+  llvm::errs() << "after connecition while - is connected: " << m_gdb_comm.IsConnected() << "\n";
   if (!m_gdb_comm.IsConnected()) {
     if (error.Success())
       error.SetErrorString("not connected to remote gdb server");
@@ -1007,7 +1002,7 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
     return error;
   }
 
-  llvm::errs() << "IsConnected(): " << m_gdb_comm.IsConnected() << "\n";
+  llvm::errs() << "After handshake\n";
   // Send $QNonStop:1 packet on startup if required
   if (GetTarget().GetNonStopModeEnabled())
     GetTarget().SetNonStopModeEnabled(m_gdb_comm.SetNonStopMode(true));

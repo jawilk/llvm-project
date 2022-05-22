@@ -97,7 +97,7 @@ void PlatformLinux::Initialize() {
   PlatformPOSIX::Initialize();
 
   if (g_initialize_count++ == 0) {
-#if defined(__linux__) && !defined(__ANDROID__)
+#if (defined(__linux__) || defined(__EMSCRIPTEN__)) && !defined(__ANDROID__)
     PlatformSP default_platform_sp(new PlatformLinux(true));
     default_platform_sp->SetSystemArchitecture(HostInfo::GetArchitecture());
     Platform::SetHostPlatform(default_platform_sp);
@@ -126,6 +126,8 @@ PlatformLinux::PlatformLinux(bool is_host)
 
 bool PlatformLinux::GetSupportedArchitectureAtIndex(uint32_t idx,
                                                     ArchSpec &arch) {
+  llvm::errs() << "PlatformLinux::GetSupportedArchitectureAtIndex\n";
+  llvm::errs() << "Arch: " << arch.GetArchitectureName() << " idx: " << idx << "\n";
   if (IsHost()) {
     ArchSpec hostArch = HostInfo::GetArchitecture(HostInfo::eArchKindDefault);
     if (hostArch.GetTriple().isOSLinux()) {
@@ -179,6 +181,9 @@ bool PlatformLinux::GetSupportedArchitectureAtIndex(uint32_t idx,
       break;
     case 9:
       triple.setArchName("s390x");
+      break;
+    case 10:
+      triple.setArchName("bpfel");
       break;
     default:
       return false;

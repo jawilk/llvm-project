@@ -36,6 +36,7 @@ typedef SOCKET NativeSocket;
 #else
 typedef int NativeSocket;
 #endif
+class JavascriptSocket;
 class TCPSocket;
 class UDPSocket;
 
@@ -45,7 +46,8 @@ public:
     ProtocolTcp,
     ProtocolUdp,
     ProtocolUnixDomain,
-    ProtocolUnixAbstract
+    ProtocolUnixAbstract,
+    ProtocolJavascript
   };
 
   static const NativeSocket kInvalidSocketValue;
@@ -69,6 +71,8 @@ public:
   static llvm::Expected<std::unique_ptr<TCPSocket>>
   TcpListen(llvm::StringRef host_and_port, bool child_processes_inherit,
             Predicate<uint16_t> *predicate, int backlog = 5);
+
+  static llvm::Expected<std::unique_ptr<Socket>> JavascriptConnect();
 
   static llvm::Expected<std::unique_ptr<Socket>>
   TcpConnect(llvm::StringRef host_and_port, bool child_processes_inherit);

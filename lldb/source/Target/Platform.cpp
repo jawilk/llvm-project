@@ -857,6 +857,7 @@ Status
 Platform::ResolveExecutable(const ModuleSpec &module_spec,
                             lldb::ModuleSP &exe_module_sp,
                             const FileSpecList *module_search_paths_ptr) {
+  llvm::errs() << "Platform::ResolveExecutable\n";
   Status error;
   if (FileSystem::Instance().Exists(module_spec.GetFileSpec())) {
     if (module_spec.GetArchitecture().IsValid()) {
@@ -1182,6 +1183,7 @@ Platform::DebugProcess(ProcessLaunchInfo &launch_info, Debugger &debugger,
 lldb::PlatformSP
 Platform::GetPlatformForArchitecture(const ArchSpec &arch,
                                      ArchSpec *platform_arch_ptr) {
+  llvm::errs() << "Platform::GetPlatformForArchitecture\n";
   lldb::PlatformSP platform_sp;
   Status error;
   if (arch.IsValid())
@@ -1194,6 +1196,7 @@ Platform::GetPlatformForArchitecture(const ArchSpec &arch,
 bool Platform::IsCompatibleArchitecture(const ArchSpec &arch,
                                         bool exact_arch_match,
                                         ArchSpec *compatible_arch_ptr) {
+  llvm::errs() << "Platform::IsCompatibleArchitecture\n";
   // If the architecture is invalid, we must answer true...
   if (arch.IsValid()) {
     ArchSpec platform_arch;

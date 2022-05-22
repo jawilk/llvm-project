@@ -16,7 +16,6 @@
 #include "lldb/Host/posix/ConnectionFileDescriptorPosix.h"
 #include "lldb/Host/Config.h"
 #include "lldb/Host/Socket.h"
-#include "lldb/Host/JavascriptSocket.h"
 #include "lldb/Host/SocketAddress.h"
 #include "lldb/Utility/SelectHelper.h"
 #include "lldb/Utility/Timeout.h"
@@ -42,6 +41,7 @@
 #endif
 #include "lldb/Host/Host.h"
 #include "lldb/Host/Socket.h"
+#include "lldb/Host/common/JavascriptSocket.h"
 #include "lldb/Host/common/TCPSocket.h"
 #include "lldb/Host/common/UDPSocket.h"
 #include "lldb/Utility/Log.h"
@@ -145,13 +145,13 @@ void ConnectionFileDescriptor::CloseCommandPipe() {
 }
 
 bool ConnectionFileDescriptor::IsConnected() const {
-  llvm::errs() << "posix IsConnected\n";
+  //llvm::errs() << "posix IsConnected\n";
   return (m_read_sp && m_read_sp->IsValid()) ||
          (m_write_sp && m_write_sp->IsValid());
 }
 
 ConnectionStatus ConnectionFileDescriptor::Connect(llvm::StringRef path,
-                                       :q            Status *error_ptr) {
+                                                   Status *error_ptr) {
   llvm::errs() << "ConnectionFileDescriptor::Connect\n";
   std::lock_guard<std::recursive_mutex> guard(m_mutex);
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
@@ -185,9 +185,11 @@ ConnectionStatus ConnectionFileDescriptor::Connect(llvm::StringRef path,
       // unix-abstract-connect://SOCKNAME
       return UnixAbstractSocketConnect(*addr, error_ptr);
     }
+    // TODO define(__EMSCRIPTEN__)
     else if ((addr = GetURLAddress(path, JAVASCRIPT_SCHEME))) {
       // javascript://PLACEHOLDER
-      return ConnectJAVASCRIPT(*addr, error_ptr);
+      return ConnectJavascript(*addr, error_ptr);
+    }
 #if LLDB_ENABLE_POSIX
     else if ((addr = GetURLAddress(path, FD_SCHEME))) {
       // Just passing a native file descriptor within this current process that
@@ -364,6 +366,7 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
                                       const Timeout<std::micro> &timeout,
                                       ConnectionStatus &status,
                                       Status *error_ptr) {
+  llvm::errs() << "ConnectionFileDescriptor::Read\n";
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
 
   std::unique_lock<std::recursive_mutex> locker(m_mutex, std::defer_lock);
@@ -385,14 +388,15 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
     status = eConnectionStatusError;
     return 0;
   }
-
-  status = BytesAvailable(timeout, error_ptr);
+  // TODO: synchronize with rbpf data over javascript
+  /*status = BytesAvailable(timeout, error_ptr);
   if (status != eConnectionStatusSuccess)
-    return 0;
+    return 0;*/
 
   Status error;
   size_t bytes_read = dst_len;
   error = m_read_sp->Read(dst, bytes_read);
+  llvm::errs() << "ConnectionFileDescriptor::Read bytes_read: " << bytes_read << "\n";
 
   if (log) {
     LLDB_LOGF(log,
@@ -414,6 +418,7 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
     *error_ptr = error;
 
   if (error.Fail()) {
+    llvm::errs() << "erro.fail()\n";
     uint32_t error_value = error.GetError();
     switch (error_value) {
     case EAGAIN: // The file was marked for non-blocking I/O, and no data were
@@ -472,6 +477,7 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
 size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
                                        ConnectionStatus &status,
                                        Status *error_ptr) {
+  llvm::errs() << "ConnectionFileDescriptor::Write\n";
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOGF(log,
             "%p ConnectionFileDescriptor::Write (src = %p, src_len = %" PRIu64
@@ -556,6 +562,7 @@ std::string ConnectionFileDescriptor::GetURI() { return m_uri; }
 ConnectionStatus
 ConnectionFileDescriptor::BytesAvailable(const Timeout<std::micro> &timeout,
                                          Status *error_ptr) {
+  //llvm::errs() << "ConnectionFileDescriptor::BytesAvailable\n";
   // Don't need to take the mutex here separately since we are only called from
   // Read.  If we ever get used more generally we will need to lock here as
   // well.
@@ -567,13 +574,12 @@ ConnectionFileDescriptor::BytesAvailable(const Timeout<std::micro> &timeout,
   // thread change these values out from under us and cause problems in the
   // loop below where like in FS_SET()
   const IOObject::WaitableHandle handle = m_read_sp->GetWaitableHandle();
+  llvm::errs() << "handle: " << handle << "\n";
   const int pipe_fd = m_pipe.GetReadFileDescriptor();
-
   if (handle != IOObject::kInvalidHandleValue) {
     SelectHelper select_helper;
     if (timeout)
       select_helper.SetTimeout(*timeout);
-
     select_helper.FDSetRead(handle);
 #if defined(_WIN32)
     // select() won't accept pipes on Windows.  The entire Windows codepath
@@ -586,11 +592,11 @@ ConnectionFileDescriptor::BytesAvailable(const Timeout<std::micro> &timeout,
 #endif
     if (have_pipe_fd)
       select_helper.FDSetRead(pipe_fd);
-
     while (handle == m_read_sp->GetWaitableHandle()) {
 
       Status error = select_helper.Select();
-
+      llvm::errs() << "select Error: " << error.AsCString() << "\n";
+      
       if (error_ptr)
         *error_ptr = error;
 
@@ -730,22 +736,14 @@ ConnectionFileDescriptor::SocketListenAndAccept(llvm::StringRef s,
   return eConnectionStatusSuccess;
 }
 
-ConnectionStatus ConnectionFileDescriptor::ConnectJAVASCRIPT(llvm::StringRef s,
-                                                      Status *error_ptr) {
+ConnectionStatus ConnectionFileDescriptor::ConnectJavascript(llvm::StringRef s,
+                                                             Status *error_ptr) {
   llvm::errs() << "ConnectJAVASCRIPT\n";
   if (error_ptr)
     *error_ptr = Status();
 
-  llvm::Expected<std::unique_ptr<JavacriptSocket>> socket =
-      JavascriptSocket::Connect();
-  if (!socket) {
-    if (error_ptr)
-      *error_ptr = socket.takeError();
-    else
-      LLDB_LOG_ERROR(GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION),
-                     socket.takeError(), "tcp connect failed: {0}");
-    return eConnectionStatusError;
-  }
+  llvm::Expected<std::unique_ptr<Socket>> socket = Socket::JavascriptConnect();
+
   m_write_sp = std::move(*socket);
   m_read_sp = m_write_sp;
   m_uri.assign(std::string(s));

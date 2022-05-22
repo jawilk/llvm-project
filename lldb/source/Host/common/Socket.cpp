@@ -6,12 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#endif
+
 #include "lldb/Host/Socket.h"
 
 #include "lldb/Host/Config.h"
 #include "lldb/Host/Host.h"
 #include "lldb/Host/SocketAddress.h"
 #include "lldb/Host/StringConvert.h"
+#include "lldb/Host/common/JavascriptSocket.h"
 #include "lldb/Host/common/TCPSocket.h"
 #include "lldb/Host/common/UDPSocket.h"
 #include "lldb/Utility/Log.h"
@@ -109,10 +114,15 @@ void Socket::Terminate() {
 std::unique_ptr<Socket> Socket::Create(const SocketProtocol protocol,
                                        bool child_processes_inherit,
                                        Status &error) {
+  llvm::errs() << "Socket::Create\n";
   error.Clear();
 
   std::unique_ptr<Socket> socket_up;
   switch (protocol) {
+  case ProtocolJavascript:
+    socket_up =
+        std::make_unique<JavascriptSocket>(true, child_processes_inherit);
+    break;
   case ProtocolTcp:
     socket_up =
         std::make_unique<TCPSocket>(true, child_processes_inherit);
@@ -146,6 +156,24 @@ std::unique_ptr<Socket> Socket::Create(const SocketProtocol protocol,
 
   return socket_up;
 }
+
+llvm::Expected<std::unique_ptr<Socket>> Socket::JavascriptConnect() {
+  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
+  LLDB_LOG(log, "host_and_port = {0}", "javascript");
+
+  Status error;
+  std::unique_ptr<Socket> connect_socket(
+      Create(ProtocolJavascript, false, error));
+  if (error.Fail())
+    return error.ToError();
+
+  error = connect_socket->Connect("");
+  if (error.Success())
+    return std::move(connect_socket);
+
+  return error.ToError();
+}
+
 
 llvm::Expected<std::unique_ptr<Socket>>
 Socket::TcpConnect(llvm::StringRef host_and_port,
@@ -317,11 +345,32 @@ bool Socket::DecodeHostAndPort(llvm::StringRef host_and_port,
 
 IOObject::WaitableHandle Socket::GetWaitableHandle() {
   // TODO: On Windows, use WSAEventSelect
+  //llvm::errs() << "Socket::GetWaitableHandle\ņ";
   return m_socket;
 }
 
+#if defined(__EMSCRIPTEN__)
+uint8_t rbpf_data[8192];
+extern "C" {
+    void get_rbpf_data(const char *data, const size_t num_bytes) {
+        llvm::errs() << "get_rbpf_buf\n";
+        for (int i=0; i<num_bytes; i++)
+            rbpf_data[i] = data[i];
+    }
+}
+#endif
 Status Socket::Read(void *buf, size_t &num_bytes) {
+  llvm::errs() << "-- Socket::Read\n";
   Status error;
+  #if defined(__EMSCRIPTEN__)
+  num_bytes = EM_ASM_INT({
+      return get_lldb_buf();
+  }, num_bytes);
+  memcpy(buf, rbpf_data, num_bytes);
+  for (int i=0; i<num_bytes; i++)
+    llvm::errs() << ((char*) buf)[i];
+  llvm::errs() << "\n";
+  #else
   int bytes_received = 0;
   do {
     bytes_received = ::recv(m_socket, static_cast<char *>(buf), num_bytes, 0);
@@ -343,7 +392,9 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
               static_cast<uint64_t>(num_bytes),
               static_cast<int64_t>(bytes_received), error.AsCString());
   }
-
+  #endif
+  llvm::errs() << "num_bytes: " << num_bytes << "\n";
+  llvm::errs() << "END Socket::Read error: " << error.AsCString() << "\n";
   return error;
 }
 
@@ -418,8 +469,36 @@ int Socket::SetOption(int level, int option_name, int option_value) {
                       sizeof(option_value));
 }
 
+#if defined(__EMSCRIPTEN__)
+extern "C" {
+    char* set_rbpf_buf(char *data, int num_bytes) {
+    llvm::errs() << "set_rbpf_buf\n";
+    for (int i=0; i<num_bytes; i++)
+      llvm::errs() << data[i];
+    return data;
+    }
+}
+#endif
+
 size_t Socket::Send(const void *buf, const size_t num_bytes) {
+  llvm::errs() << "-- Socket::Send len: " << num_bytes << " payload: ";
+  for (int i=0; i<num_bytes; i++)
+      llvm::errs() << ((char*) buf)[i];
+  llvm::errs() << "\n";
+  #if defined(__EMSCRIPTEN__)
+  EM_ASM({
+      var reply = Module.ccall('set_rbpf_buf', 'string', ['number', 'number'], [$1, $0]);
+      console.log("REPLY lldb");
+      console.log(reply);
+      lldb_reply[call_count] = reply;
+      //rbpf_buf_len = $0;
+      //rbpf_buf = Module._malloc($0);
+      //Module.ccall('set_rbpf_buf', ['number', 'number', 'number'], [rbpf_buf, $1, $0]);
+      }, num_bytes, static_cast<const char *>(buf));
+  return num_bytes;
+  #else
   return ::send(m_socket, static_cast<const char *>(buf), num_bytes, 0);
+  #endif
 }
 
 void Socket::SetLastError(Status &error) {

@@ -91,7 +91,7 @@ Status TargetList::CreateTargetInternal(
                                    triple_str.str().c_str());
     return error;
   }
-
+  llvm::errs() << "0TargetList::CreateTargetInternal\n";
   ArchSpec platform_arch(arch);
   // Create a new platform if a platform was specified in the platform options
   // and doesn't match the selected platform.
@@ -104,6 +104,7 @@ Status TargetList::CreateTargetInternal(
     if (!platform_sp)
       return error;
   }
+  llvm::errs() << "1 TargetList::CreateTargetInternal\n";
   bool prefer_platform_arch = false;
   auto update_platform_arch = [&](const ArchSpec &module_arch) {
     // If the OS or vendor weren't specified, then adopt the module's
@@ -205,7 +206,7 @@ Status TargetList::CreateTargetInternal(
             }
           }
         }
-
+  llvm::errs() << "3TargetList::CreateTargetInternal\n";
         Platform *platform_ptr = nullptr;
         bool more_than_one_platforms = false;
         for (const auto &the_platform_sp : platforms) {
@@ -250,6 +251,7 @@ Status TargetList::CreateTargetInternal(
       }
     }
   }
+  llvm::errs() << "4TargetList::CreateTargetInternal\n";
   // If we have a valid architecture, make sure the current platform is
   // compatible with that architecture.
   /*if (!prefer_platform_arch && arch.IsValid()) {
@@ -269,8 +271,11 @@ Status TargetList::CreateTargetInternal(
         debugger.GetPlatformList().SetSelectedPlatform(platform_sp);
     }
   }*/
-  if (!platform_arch.IsValid())
+  if (!platform_arch.IsValid()) {
+    llvm::errs() << "!platform_arch.IsValid() TargetList::CreateTargetInternal\n";
     platform_arch = arch;
+  }
+  llvm::errs() << "END TargetList::CreateTargetInternal\n";
   return TargetList::CreateTargetInternal(debugger, user_exe_path,
                                           platform_arch, load_dependent_files,
                                           platform_sp, target_sp);
@@ -282,6 +287,7 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
                                         LoadDependentFiles load_dependent_files,
                                         lldb::PlatformSP &platform_sp,
                                         lldb::TargetSP &target_sp) {
+  llvm::errs() << "TargetList::CreateTargetInternal2\n";
   LLDB_SCOPED_TIMERF("TargetList::CreateTarget (file = '%s', arch = '%s')",
                      user_exe_path.str().c_str(),
                      specified_arch.GetArchitectureName());
@@ -291,17 +297,21 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
   ArchSpec arch(specified_arch);
 
   if (arch.IsValid()) {
+  llvm::errs() << "arch.IsValid() TargetList::CreateTargetInternal2\n";
     if (!platform_sp ||
         !platform_sp->IsCompatibleArchitecture(arch, false, nullptr))
       platform_sp = Platform::GetPlatformForArchitecture(specified_arch, &arch);
   }
 
-  if (!platform_sp)
+  if (!platform_sp) {
+    llvm::errs() << "!platform_sp TargetList::CreateTargetInternal2\n";
     platform_sp = debugger.GetPlatformList().GetSelectedPlatform();
-
+  }
   if (!arch.IsValid())
     arch = specified_arch;
-
+    llvm::errs() << "Arch: " << specified_arch.GetArchitectureName() << "\n";
+  llvm::errs() << "Platform: " << platform_sp->GetName() << "\n";
+  llvm::errs() << "1TargetList::CreateTargetInternal2\n";
   FileSpec file(user_exe_path);
   if (!FileSystem::Instance().Exists(file) && user_exe_path.startswith("~")) {
     // we want to expand the tilde but we don't want to resolve any symbolic
@@ -315,7 +325,7 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
     else
       file = FileSpec(unglobbed_path.c_str());
   }
-
+  llvm::errs() << "2TargetList::CreateTargetInternal2\n";
   bool user_exe_path_is_bundle = false;
   char resolved_bundle_exe_path[PATH_MAX];
   resolved_bundle_exe_path[0] = '\0';
@@ -332,9 +342,10 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
           file = cwd_file;
       }
     }
-
+  llvm::errs() << "3TargetList::CreateTargetInternal2\n";
     ModuleSP exe_module_sp;
     if (platform_sp) {
+  llvm::errs() << "is_platform TargetList::CreateTargetInternal2\n";
       FileSpecList executable_search_paths(
           Target::GetDefaultExecutableSearchPaths());
       ModuleSpec module_spec(file, arch);
@@ -369,7 +380,7 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
     // valid arch was specified
     target_sp.reset(new Target(debugger, arch, platform_sp, is_dummy_target));
   }
-
+  llvm::errs() << "4TargetList::CreateTargetInternal2\n";
   if (!target_sp)
     return error;
 
@@ -394,7 +405,7 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
 
   // Now prime this from the dummy target:
   target_sp->PrimeFromDummyTarget(debugger.GetDummyTarget());
-
+  llvm::errs() << "END TargetList::CreateTargetInternal2\n";
   return error;
 }
 

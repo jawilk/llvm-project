@@ -22,6 +22,7 @@ add_host_subdirectory(common
   common/HostNativeThreadBase.cpp
   common/HostProcess.cpp
   common/HostThread.cpp
+  common/JavascriptSocket.cpp
   common/LockFileBase.cpp
   common/LZMA.cpp
   common/MainLoop.cpp

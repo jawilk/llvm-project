@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "lldb/API/SBTarget.h"
-#if !defined(__linux__)
+#if defined(__EMSCRIPTEN__)
 #include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
 #endif
 #include <string.h>
@@ -874,239 +874,241 @@ static llvm::Optional<int> InitializeReproducer(llvm::StringRef argv0,
   return llvm::None;
 }
 
-int main(int argc, char const *argv[]) {
-  // Editline uses for example iswprint which is dependent on LC_CTYPE.
-  std::setlocale(LC_ALL, "");
-  std::setlocale(LC_CTYPE, "");
-
-  // Setup LLVM signal handlers and make sure we call llvm_shutdown() on
-  // destruction.
-  llvm::InitLLVM IL(argc, argv, /*InstallPipeSignalExitHandler=*/false);
-
-  // Parse arguments.
-  LLDBOptTable T;
-  unsigned MissingArgIndex;
-  unsigned MissingArgCount;
-  ArrayRef<const char *> arg_arr = makeArrayRef(argv + 1, argc - 1);
-  opt::InputArgList input_args =
-      T.ParseArgs(arg_arr, MissingArgIndex, MissingArgCount);
-  llvm::StringRef argv0 = llvm::sys::path::filename(argv[0]);
-
-  if (input_args.hasArg(OPT_help)) {
-    printHelp(T, argv0);
-    return 0;
-  }
-
-  // Check for missing argument error.
-  if (MissingArgCount) {
-    WithColor::error() << "argument to '"
-                       << input_args.getArgString(MissingArgIndex)
-                       << "' is missing\n";
-  }
-  // Error out on unknown options.
-  if (input_args.hasArg(OPT_UNKNOWN)) {
-    for (auto *arg : input_args.filtered(OPT_UNKNOWN)) {
-      WithColor::error() << "unknown option: " << arg->getSpelling() << '\n';
-    }
-  }
-  if (MissingArgCount || input_args.hasArg(OPT_UNKNOWN)) {
-    llvm::errs() << "Use '" << argv0
-                 << " --help' for a complete list of options.\n";
-    return 1;
-  }
-
-  if (auto exit_code = InitializeReproducer(argv[0], input_args)) {
-    return *exit_code;
-  }
-
-  SBError error = SBDebugger::InitializeWithErrorHandling();
-  if (error.Fail()) {
-    WithColor::error() << "initialization failed: " << error.GetCString()
-                       << '\n';
-    return 1;
-  }
-  SBHostOS::ThreadCreated("<lldb.driver.main-thread>");
-
-  signal(SIGINT, sigint_handler);
-#if !defined(_MSC_VER)
-  signal(SIGPIPE, SIG_IGN);
-  signal(SIGWINCH, sigwinch_handler);
-  signal(SIGTSTP, sigtstp_handler);
-  signal(SIGCONT, sigcont_handler);
-#endif
-
-  int exit_code = 0;
-  // Create a scope for driver so that the driver object will destroy itself
-  // before SBDebugger::Terminate() is called.
-  {
-    Driver driver;
-
-    bool exiting = false;
-    SBError error(driver.ProcessArgs(input_args, exiting));
-    if (error.Fail()) {
-      exit_code = 1;
-      if (const char *error_cstr = error.GetCString())
-        WithColor::error() << error_cstr << '\n';
-    } else if (!exiting) {
-      exit_code = driver.MainLoop();
-    }
-  }
-
-  SBDebugger::Terminate();
-  return exit_code;
-}
+//int main(int argc, char const *argv[]) {
+//  // Editline uses for example iswprint which is dependent on LC_CTYPE.
+//  std::setlocale(LC_ALL, "");
+//  std::setlocale(LC_CTYPE, "");
+//
+//  // Setup LLVM signal handlers and make sure we call llvm_shutdown() on
+//  // destruction.
+//  llvm::InitLLVM IL(argc, argv, /*InstallPipeSignalExitHandler=*/false);
+//
+//  // Parse arguments.
+//  LLDBOptTable T;
+//  unsigned MissingArgIndex;
+//  unsigned MissingArgCount;
+//  ArrayRef<const char *> arg_arr = makeArrayRef(argv + 1, argc - 1);
+//  opt::InputArgList input_args =
+//      T.ParseArgs(arg_arr, MissingArgIndex, MissingArgCount);
+//  llvm::StringRef argv0 = llvm::sys::path::filename(argv[0]);
+//
+//  if (input_args.hasArg(OPT_help)) {
+//    printHelp(T, argv0);
+//    return 0;
+//  }
+//
+//  // Check for missing argument error.
+//  if (MissingArgCount) {
+//    WithColor::error() << "argument to '"
+//                       << input_args.getArgString(MissingArgIndex)
+//                       << "' is missing\n";
+//  }
+//  // Error out on unknown options.
+//  if (input_args.hasArg(OPT_UNKNOWN)) {
+//    for (auto *arg : input_args.filtered(OPT_UNKNOWN)) {
+//      WithColor::error() << "unknown option: " << arg->getSpelling() << '\n';
+//    }
+//  }
+//  if (MissingArgCount || input_args.hasArg(OPT_UNKNOWN)) {
+//    llvm::errs() << "Use '" << argv0
+//                 << " --help' for a complete list of options.\n";
+//    return 1;
+//  }
+//
+//  if (auto exit_code = InitializeReproducer(argv[0], input_args)) {
+//    return *exit_code;
+//  }
+//
+//  SBError error = SBDebugger::InitializeWithErrorHandling();
+//  if (error.Fail()) {
+//    WithColor::error() << "initialization failed: " << error.GetCString()
+//                       << '\n';
+//    return 1;
+//  }
+//  SBHostOS::ThreadCreated("<lldb.driver.main-thread>");
+//
+//  signal(SIGINT, sigint_handler);
+//#if !defined(_MSC_VER)
+//  signal(SIGPIPE, SIG_IGN);
+//  signal(SIGWINCH, sigwinch_handler);
+//  signal(SIGTSTP, sigtstp_handler);
+//  signal(SIGCONT, sigcont_handler);
+//#endif
+//
+//  int exit_code = 0;
+//  // Create a scope for driver so that the driver object will destroy itself
+//  // before SBDebugger::Terminate() is called.
+//  {
+//    Driver driver;
+//
+//    bool exiting = false;
+//    SBError error(driver.ProcessArgs(input_args, exiting));
+//    if (error.Fail()) {
+//      exit_code = 1;
+//      if (const char *error_cstr = error.GetCString())
+//        WithColor::error() << error_cstr << '\n';
+//    } else if (!exiting) {
+//      exit_code = driver.MainLoop();
+//    }
+//  }
+//
+//  SBDebugger::Terminate();
+//  return exit_code;
+//}
 
 // ------------------------------------------------------------------------
-//#if defined(__linux__)
-//class LLDBSentry {
-//public:
-//  LLDBSentry() {
-//    // Initialize LLDB
-//    SBDebugger::Initialize();
-//  }
-//  ~LLDBSentry() {
-//    // Terminate LLDB
-//    SBDebugger::Terminate();
-//  }
-//};
-//
-//static char command[1024];
-//int main(int argc, char const *argv[]) {
-//  llvm::errs() << "In main\n";
-//  LLDBSentry sentry;
-//
-//  const char *exe_file_path = "wasm_test_files/a.out";
-////const char *exe_file_path = "/home/wj/helloworld_rust_debug.so";
-//  const char *arch = NULL;
-//  const char *platform = NULL;
-//  const bool add_dependent_libs = false;
-//  SBError error;
-//          SBCommandReturnObject command_result;
-//
-//       //std::cout << "LLDB got command: " << input << "\n";
-//  SBDebugger debugger(SBDebugger::Create());
-//  // Create a debugger instance so we can create a target
-//  if (!debugger.IsValid())
-//    fprintf(stderr, "error: failed to create a debugger object\n");
-//  debugger.SetAsync(false);
-//
-//SBTarget target = debugger.CreateTarget(exe_file_path, arch, platform,
-//                                            add_dependent_libs, error);
-//
-//snprintf(command, sizeof(command), "target list");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//   llvm::errs() << "Size: " << command_result.GetOutputSize() << "\n";
-//   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
-///*
-//snprintf(command, sizeof(command), "image lookup -r -n .*");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//   llvm::errs() << "Size: " << command_result.GetOutputSize() << "\n";
-//   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
-//snprintf(command, sizeof(command), "image dump sections");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//   llvm::errs() << "Size: " << command_result.GetOutputSize() << "\n";
-//   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";*/
-//snprintf(command, sizeof(command), "source list");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-// llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//   llvm::errs() << "Size: " << command_result.GetOutputSize() << "\n";
-//   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
-////snprintf(command, sizeof(command), "disassemble --start-address 0x00000000000005d9 --count 20");
-//  //     debugger.GetCommandInterpreter().HandleCommand(command,
-//                                              //        command_result);
-//   //llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//snprintf(command, sizeof(command), "gdb-remote 9001");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-///*snprintf(command, sizeof(command), "run");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
-//snprintf(command, sizeof(command), "b main");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//snprintf(command, sizeof(command), "br list");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//*/
-//   llvm::errs() << "---- RUN\n";
-//   snprintf(command, sizeof(command), "run");
-//       debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
-//   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
-//
-//   llvm::errs() << "Finished\n";
-//
-//  //log enable gdb-remote packets
-//  return 0;
-//}
-//
-//#else
-//class LLDBSentry {
-//public:
-//  LLDBSentry() {
-//    // Initialize LLDB
-//    SBDebugger::Initialize();
-//  }
-//  ~LLDBSentry() {
-//    // Terminate LLDB
-//    SBDebugger::Terminate();
-//  }
-//};
-//
-////static LLDBSentry sentry;
-//static SBDebugger debugger;
+#if defined(__linux__)
+class LLDBSentry {
+public:
+  LLDBSentry() {
+    // Initialize LLDB
+    SBDebugger::Initialize();
+  }
+  ~LLDBSentry() {
+    // Terminate LLDB
+    SBDebugger::Terminate();
+  }
+};
+
+static char command[1024];
+int main(int argc, char const *argv[]) {
+  llvm::errs() << "In main\n";
+  LLDBSentry sentry;
+
+  //const char *exe_file_path = "wasm_test_files/a.out";
+  const char *exe_file_path = "/home/wj/helloworld_rust_debug.so";
+  const char *arch = NULL;
+  const char *platform = NULL;
+  const bool add_dependent_libs = false;
+  SBError error;
+          SBCommandReturnObject command_result;
+
+       //std::cout << "LLDB got command: " << input << "\n";
+  SBDebugger debugger(SBDebugger::Create());
+  // Create a debugger instance so we can create a target
+  if (!debugger.IsValid())
+    fprintf(stderr, "error: failed to create a debugger object\n");
+  debugger.SetAsync(false);
+
+SBTarget target = debugger.CreateTarget(exe_file_path, arch, platform,
+                                            add_dependent_libs, error);
+
+snprintf(command, sizeof(command), "target list");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Size: " << command_result.GetOutputSize() << "\n";
+   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
+/*
+snprintf(command, sizeof(command), "image lookup -r -n .*");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Size: " << command_result.GetOutputSize() << "\n";
+   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
+snprintf(command, sizeof(command), "image dump sections");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Size: " << command_result.GetOutputSize() << "\n";
+   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";*/
+snprintf(command, sizeof(command), "source list");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+ llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Size: " << command_result.GetOutputSize() << "\n";
+   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";
+//snprintf(command, sizeof(command), "disassemble --start-address 0x00000000000005d9 --count 20");
+// disassemble --start-address 0x0000000000001c00 --count 20
+// disassemble --name entrypoint --count 20 
+  //     debugger.GetCommandInterpreter().HandleCommand(command,
+                                              //        command_result);
+   //llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+  // llvm::errs() << "---- process connect\n";
+snprintf(command, sizeof(command), "process connect --plugin gdb-remote javascript://");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+/*snprintf(command, sizeof(command), "gdb-remote 9001");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";*/
+/*
+snprintf(command, sizeof(command), "b main");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+snprintf(command, sizeof(command), "br list");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+*/
+   llvm::errs() << "---- RUN\n";
+   /*snprintf(command, sizeof(command), "run");
+       debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+   llvm::errs() << "Returned: " << command_result.GetOutput() << "\n";
+   llvm::errs() << "Succeeded: " << command_result.Succeeded() << "\n";*/
+
+   llvm::errs() << "Finished\n";
+
+  //log enable gdb-remote packets
+  return 0;
+}
+
+#else
+class LLDBSentry {
+public:
+  LLDBSentry() {
+    // Initialize LLDB
+    SBDebugger::Initialize();
+  }
+  ~LLDBSentry() {
+    // Terminate LLDB
+    SBDebugger::Terminate();
+  }
+};
+
 //static LLDBSentry sentry;
-//int main(int argc, char const *argv[]) {
-//    debugger = SBDebugger::Create(false);
-//    if (!debugger.IsValid())
-//        fprintf(stderr, "error: failed to create a debugger object\n");
-//    debugger.SetAsync(false);
-//
-//    return 0;
-//}
-//
-//extern "C" {
-//    EMSCRIPTEN_KEEPALIVE char* execute_command(char* input) {
-//        std::cout << "lldb received: " << input << "\n";
-//
-//        char command[1024];
-//        const char *arch = NULL;
-//        const char *platform = NULL;
-//        const bool add_dependent_libs = false;
-//        SBError error;
-//        SBCommandReturnObject command_result;
-//
-//    //SBDebugger debugger(SBDebugger::Create());
-//  //const char *exe_file_path = "wasm_test_files/a.out";
-////SBTarget target = debugger.CreateTarget(exe_file_path, arch, platform,
-//                                          //  add_dependent_libs, error);
-//
-//        if (input[0]=='f' && input[1]=='i' && input[2]=='l' && input[3]=='e') {
-//            const size_t len = strlen(input);
-//            std::string exe_file_path = std::string(input).substr(5, len);
-//            SBTarget target = debugger.CreateTarget(exe_file_path.c_str(), arch, platform,
-//                                            add_dependent_libs, error);
-//            return "Current executable set to '/wasm_test_files/a.out' (x86_64).";
-//        }
-//        snprintf(command, sizeof(command), input);
-//        debugger.GetCommandInterpreter().HandleCommand(command,
-//                                                      command_result);
-//        char* ret_val = const_cast<char*>(command_result.GetOutput());
-//        std::cout << "lldb reply: " << ret_val << "\n";
-//        return ret_val;
-//    }
-//}
-//#endif
+static SBDebugger debugger;
+static LLDBSentry sentry;
+int main(int argc, char const *argv[]) {
+    std::cout << "INIT main() c++\n";
+    debugger = SBDebugger::Create(false);
+    if (!debugger.IsValid())
+        fprintf(stderr, "error: failed to create a debugger object\n");
+    debugger.SetAsync(false);
+
+    return 0;
+}
+
+/*extern "C" {
+    const char* create_target(const char* exe_file_path) {
+        std::cout << "create_target: " << exe_file_path << "\n";
+	const char *arch = NULL;
+        const char *platform = NULL;
+        const bool add_dependent_libs = false;
+        SBError error;
+        SBTarget target = debugger.CreateTarget(exe_file_path, arch, platform,
+                                            add_dependent_libs, error);
+        std::cout << "arch: " << arch << "\n";
+	return arch;
+    }
+}*/
+
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE char* execute_command(char* input) {
+        std::cout << "lldb received: " << input << "\n";
+
+        char command[1024];
+        SBCommandReturnObject command_result;
+
+        snprintf(command, sizeof(command), input);
+        debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+        char* ret_val = const_cast<char*>(command_result.GetOutput());
+        std::cout << "lldb reply: " << ret_val << "\n";
+        return ret_val;
+    }
+}
+#endif
