@@ -152,7 +152,7 @@ bool ConnectionFileDescriptor::IsConnected() const {
 
 ConnectionStatus ConnectionFileDescriptor::Connect(llvm::StringRef path,
                                                    Status *error_ptr) {
-  llvm::errs() << "ConnectionFileDescriptor::Connect\n";
+  llvm::errs() << "ConnectionFileDescriptor::Connect - path: " << path << "\n";
   std::lock_guard<std::recursive_mutex> guard(m_mutex);
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOGF(log, "%p ConnectionFileDescriptor::Connect (url = '%s')",
@@ -172,9 +172,10 @@ ConnectionStatus ConnectionFileDescriptor::Connect(llvm::StringRef path,
       // unix://SOCKNAME
       return NamedSocketAccept(*addr, error_ptr);
     } else if ((addr = GetURLAddress(path, CONNECT_SCHEME))) {
-        llvm::errs() << "TCP\n";
+        llvm::errs() << "connect TCP\n";
       return ConnectTCP(*addr, error_ptr);
     } else if ((addr = GetURLAddress(path, TCP_CONNECT_SCHEME))) {
+        llvm::errs() << "connect TCP 2\n";
       return ConnectTCP(*addr, error_ptr);
     } else if ((addr = GetURLAddress(path, UDP_SCHEME))) {
       return ConnectUDP(*addr, error_ptr);
@@ -752,7 +753,7 @@ ConnectionStatus ConnectionFileDescriptor::ConnectJavascript(llvm::StringRef s,
 
 ConnectionStatus ConnectionFileDescriptor::ConnectTCP(llvm::StringRef s,
                                                       Status *error_ptr) {
-  llvm::errs() << "ConnectTCP\n";
+  llvm::errs() << "ConnectionFileDescriptor::ConnectTCP\n";
   if (error_ptr)
     *error_ptr = Status();
 

@@ -138,6 +138,7 @@ std::string TCPSocket::GetRemoteConnectionURI() const {
 }
 
 Status TCPSocket::CreateSocket(int domain) {
+  llvm::errs() << "TCPSocket::CreateSocket\n";
   Status error;
   if (IsValid())
     error = Close();
@@ -149,7 +150,7 @@ Status TCPSocket::CreateSocket(int domain) {
 }
 
 Status TCPSocket::Connect(llvm::StringRef name) {
-
+  llvm::errs() << "TCPSocket::Connect - name: " << name << "\n";
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
   LLDB_LOGF(log, "TCPSocket::%s (host/port = %s)", __FUNCTION__, name.data());
 

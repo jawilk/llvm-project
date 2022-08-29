@@ -6,9 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if defined(__EMSCRIPTEN__)
+/*#if defined(__EMSCRIPTEN__)
 #include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
-#endif
+#endif*/
 
 #include "lldb/Host/Socket.h"
 
@@ -157,6 +157,7 @@ std::unique_ptr<Socket> Socket::Create(const SocketProtocol protocol,
   return socket_up;
 }
 
+// EMSCRIPTEN
 llvm::Expected<std::unique_ptr<Socket>> Socket::JavascriptConnect() {
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOG(log, "host_and_port = {0}", "javascript");
@@ -178,6 +179,7 @@ llvm::Expected<std::unique_ptr<Socket>> Socket::JavascriptConnect() {
 llvm::Expected<std::unique_ptr<Socket>>
 Socket::TcpConnect(llvm::StringRef host_and_port,
                    bool child_processes_inherit) {
+  llvm::errs() << "Socket::TcpConnect\ņ";
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOG(log, "host_and_port = {0}", host_and_port);
 
@@ -197,6 +199,7 @@ Socket::TcpConnect(llvm::StringRef host_and_port,
 llvm::Expected<std::unique_ptr<TCPSocket>>
 Socket::TcpListen(llvm::StringRef host_and_port, bool child_processes_inherit,
                   Predicate<uint16_t> *predicate, int backlog) {
+  llvm::errs() << "Socket::TcpListen\ņ";
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOG(log, "host_and_port = {0}", host_and_port);
 
@@ -349,7 +352,7 @@ IOObject::WaitableHandle Socket::GetWaitableHandle() {
   return m_socket;
 }
 
-#if defined(__EMSCRIPTEN__)
+/*#if defined(__EMSCRIPTEN__)
 uint8_t rbpf_data[8192];
 extern "C" {
     void get_rbpf_data(const char *data, const size_t num_bytes) {
@@ -358,11 +361,11 @@ extern "C" {
             rbpf_data[i] = data[i];
     }
 }
-#endif
+#endif*/
 Status Socket::Read(void *buf, size_t &num_bytes) {
   llvm::errs() << "-- Socket::Read\n";
   Status error;
-  #if defined(__EMSCRIPTEN__)
+  /*#if defined(__EMSCRIPTEN__)
   num_bytes = EM_ASM_INT({
       return get_lldb_buf();
   }, num_bytes);
@@ -370,7 +373,7 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
   for (int i=0; i<num_bytes; i++)
     llvm::errs() << ((char*) buf)[i];
   llvm::errs() << "\n";
-  #else
+  #else*/
   int bytes_received = 0;
   do {
     bytes_received = ::recv(m_socket, static_cast<char *>(buf), num_bytes, 0);
@@ -392,7 +395,7 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
               static_cast<uint64_t>(num_bytes),
               static_cast<int64_t>(bytes_received), error.AsCString());
   }
-  #endif
+  //#endif
   llvm::errs() << "num_bytes: " << num_bytes << "\n";
   llvm::errs() << "END Socket::Read error: " << error.AsCString() << "\n";
   return error;
@@ -469,7 +472,7 @@ int Socket::SetOption(int level, int option_name, int option_value) {
                       sizeof(option_value));
 }
 
-#if defined(__EMSCRIPTEN__)
+/*#if defined(__EMSCRIPTEN__)
 extern "C" {
     char* set_rbpf_buf(char *data, int num_bytes) {
     llvm::errs() << "set_rbpf_buf\n";
@@ -478,14 +481,14 @@ extern "C" {
     return data;
     }
 }
-#endif
+#endif*/
 
 size_t Socket::Send(const void *buf, const size_t num_bytes) {
   llvm::errs() << "-- Socket::Send len: " << num_bytes << " payload: ";
   for (int i=0; i<num_bytes; i++)
       llvm::errs() << ((char*) buf)[i];
   llvm::errs() << "\n";
-  #if defined(__EMSCRIPTEN__)
+  /*#if defined(__EMSCRIPTEN__)
   EM_ASM({
       var reply = Module.ccall('set_rbpf_buf', 'string', ['number', 'number'], [$1, $0]);
       console.log("REPLY lldb");
@@ -495,10 +498,10 @@ size_t Socket::Send(const void *buf, const size_t num_bytes) {
       //rbpf_buf = Module._malloc($0);
       //Module.ccall('set_rbpf_buf', ['number', 'number', 'number'], [rbpf_buf, $1, $0]);
       }, num_bytes, static_cast<const char *>(buf));
-  return num_bytes;
-  #else
+  return num_bytes;*/
+  //#else
   return ::send(m_socket, static_cast<const char *>(buf), num_bytes, 0);
-  #endif
+  //#endif
 }
 
 void Socket::SetLastError(Status &error) {

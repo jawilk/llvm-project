@@ -226,6 +226,7 @@ GDBRemoteClientBase::SendPacketAndReceiveResponseWithOutputSupport(
 GDBRemoteCommunication::PacketResult
 GDBRemoteClientBase::SendPacketAndWaitForResponseNoLock(
     llvm::StringRef payload, StringExtractorGDBRemote &response) {
+  llvm::errs() << "GDBRemoteClientBase::SendPacketAndWaitForResponseNoLock\n";
   PacketResult packet_result = SendPacketNoLock(payload);
   if (packet_result != PacketResult::Success)
     return packet_result;

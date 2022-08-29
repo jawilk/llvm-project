@@ -121,6 +121,7 @@ size_t GDBRemoteCommunication::SendNack() {
 
 GDBRemoteCommunication::PacketResult
 GDBRemoteCommunication::SendPacketNoLock(llvm::StringRef payload) {
+  llvm::errs() << "GDBRemoteCommunication::SendPacketNoLock\n";
   StreamString packet(0, 4, eByteOrderBig);
   packet.PutChar('$');
   packet.Write(payload.data(), payload.size());
@@ -134,7 +135,7 @@ GDBRemoteCommunication::SendPacketNoLock(llvm::StringRef payload) {
 GDBRemoteCommunication::PacketResult
 GDBRemoteCommunication::SendRawPacketNoLock(llvm::StringRef packet,
                                             bool skip_ack) {
-  llvm::errs() << "SendRawPacketNoLock\n";
+  llvm::errs() << "GDBRemoteCommunication::SendRawPacketNoLock\n";
   if (IsConnected()) {
     Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PACKETS));
     ConnectionStatus status = eConnectionStatusSuccess;

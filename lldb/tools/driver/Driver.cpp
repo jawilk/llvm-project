@@ -8,7 +8,12 @@
 #include "lldb/API/SBTarget.h"
 #if defined(__EMSCRIPTEN__)
 #include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+/*#include </home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/websocket.h>
+#include </home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/threading.h>
+#include </home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/posix_socket.h>
+static EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;*/
 #endif
+
 #include <string.h>
 #include <iostream>
 
@@ -1079,6 +1084,16 @@ int main(int argc, char const *argv[]) {
         fprintf(stderr, "error: failed to create a debugger object\n");
     debugger.SetAsync(false);
 
+    /*#ifdef __EMSCRIPTEN__
+    bridgeSocket = emscripten_init_websocket_to_posix_socket_bridge("ws://localhost:8080");
+    // Synchronously wait until connection has been established.
+    uint16_t readyState = 0;
+    do {
+      emscripten_websocket_get_ready_state(bridgeSocket, &readyState);
+      emscripten_thread_sleep(100);
+    } while (readyState == 0);
+    #endif*/
+
     return 0;
 }
 
@@ -1109,6 +1124,14 @@ extern "C" {
         char* ret_val = const_cast<char*>(command_result.GetOutput());
         std::cout << "lldb reply: " << ret_val << "\n";
         return ret_val;
+    }
+}
+
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE int add(int a, int b) {
+        std::cout << "lldb received a: " << a << "\n";
+        std::cout << "lldb received b: " << b << "\n";
+        return a+b;
     }
 }
 #endif

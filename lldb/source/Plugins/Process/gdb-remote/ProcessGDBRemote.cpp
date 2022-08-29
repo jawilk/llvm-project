@@ -655,6 +655,7 @@ Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
 
   lldb::pid_t pid = m_gdb_comm.GetCurrentProcessID();
   if (pid == LLDB_INVALID_PROCESS_ID) {
+    llvm::errs() << "LLDB_INVALID_PROCESS_ID\n";
     // We don't have a valid process ID, so note that we are connected and
     // could now request to launch or attach, or get remote process listings...
     SetPrivateState(eStateConnected);
@@ -959,6 +960,7 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
     std::unique_ptr<ConnectionFileDescriptor> conn_up(
         new ConnectionFileDescriptor());
     if (conn_up) {
+      llvm::errs() << "gdb-remote RETRY LOOP 50\n";
       const uint32_t max_retry_count = 50;
       uint32_t retry_count = 0;
       while (!m_gdb_comm.IsConnected()) {
