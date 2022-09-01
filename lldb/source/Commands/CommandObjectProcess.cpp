@@ -800,6 +800,7 @@ protected:
                   command.GetArgumentAtIndex(0), plugin_name, debugger,
                   result.GetOutputStream(), debugger.GetSelectedTarget().get(),
                   error);
+    llvm::errs() << "END DoExecute COmmandObjectProcessConnect\n";
     if (error.Fail() || process_sp == nullptr) {
       result.AppendError(error.AsCString("Error connecting to the process"));
       return false;

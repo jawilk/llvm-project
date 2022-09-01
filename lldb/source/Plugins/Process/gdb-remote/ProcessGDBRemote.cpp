@@ -643,15 +643,17 @@ Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
   if (error.Fail())
     return error;
 
-  if (repro::Reproducer::Instance().IsReplaying())
-    error = ConnectToReplayServer();
-  else
+  //if (repro::Reproducer::Instance().IsReplaying())
+    //error = ConnectToReplayServer();
+  //else
+
+    // Init the connection, consider hardcoding this (?)
     error = ConnectToDebugserver(remote_url);
 
   llvm::errs() << "After ConnectToDebugserverProcessGDBRemote::DoConnectRemote\n";
   if (error.Fail())
     return error;
-  StartAsyncThread();
+  //StartAsyncThread();
 
   lldb::pid_t pid = m_gdb_comm.GetCurrentProcessID();
   if (pid == LLDB_INVALID_PROCESS_ID) {
@@ -745,7 +747,7 @@ Status ProcessGDBRemote::DoLaunch(lldb_private::Module *exe_module,
                                   ProcessLaunchInfo &launch_info) {
   Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PROCESS));
   Status error;
-
+  llvm::errs() << "ProcessGDBRemote::DoLaunch\n";
   LLDB_LOGF(log, "ProcessGDBRemote::%s() entered", __FUNCTION__);
 
   uint32_t launch_flags = launch_info.GetFlags().Get();
@@ -977,7 +979,7 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
         if (retry_count >= max_retry_count)
           break;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
     }
   }
@@ -987,11 +989,10 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
       error.SetErrorString("not connected to remote gdb server");
     return error;
   }
-  llvm::errs() << "GetNonStopModeEnabled: " << GetTarget().GetNonStopModeEnabled() << "\n";
   // Start the communications read thread so all incoming data can be parsed
   // into packets and queued as they arrive.
-  if (GetTarget().GetNonStopModeEnabled())
-    m_gdb_comm.StartReadThread();
+  //if (GetTarget().GetNonStopModeEnabled())
+    //m_gdb_comm.StartReadThread();
 
   // We always seem to be able to open a connection to a local port so we need
   // to make sure we can then send data to it. If we can't then we aren't
@@ -1004,7 +1005,7 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
     return error;
   }
 
-  llvm::errs() << "After handshake\n";
+  llvm::errs() << "After + handshake\n";
   // Send $QNonStop:1 packet on startup if required
   if (GetTarget().GetNonStopModeEnabled())
     GetTarget().SetNonStopModeEnabled(m_gdb_comm.SetNonStopMode(true));
@@ -1709,6 +1710,7 @@ bool ProcessGDBRemote::GetThreadStopInfoFromJSON(
 }
 
 bool ProcessGDBRemote::CalculateThreadStopInfo(ThreadGDBRemote *thread) {
+  llvm::errs() << "ProcessGDBRemote::CalculateThreadStopInfo\n";
   // See if we got thread stop infos for all threads via the "jThreadsInfo"
   // packet
   if (GetThreadStopInfoFromJSON(thread, m_jthreadsinfo_sp))
@@ -3474,6 +3476,7 @@ static bool SetCloexecFlag(int fd) {
 
 Status ProcessGDBRemote::LaunchAndConnectToDebugserver(
     const ProcessInfo &process_info) {
+  llvm::errs() << "ProcessGDBRemote::LaunchAndConnectToDebugserver\n";
   using namespace std::placeholders; // For _1, _2, etc.
 
   Status error;
@@ -3655,6 +3658,7 @@ void ProcessGDBRemote::DebuggerInitialize(Debugger &debugger) {
 }
 
 bool ProcessGDBRemote::StartAsyncThread() {
+  llvm::errs() << "ProcessGDBRemote::StartAsyncThread\n";
   Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PROCESS));
 
   LLDB_LOGF(log, "ProcessGDBRemote::%s ()", __FUNCTION__);
@@ -4074,7 +4078,7 @@ DataExtractor ProcessGDBRemote::GetAuxvData() {
 StructuredData::ObjectSP
 ProcessGDBRemote::GetExtendedInfoForThread(lldb::tid_t tid) {
   StructuredData::ObjectSP object_sp;
-
+  llvm::errs() << "ProcessGDBRemote::GetExtendedInfoForThread\n";
   if (m_gdb_comm.GetThreadExtendedInfoSupported()) {
     StructuredData::ObjectSP args_dict(new StructuredData::Dictionary());
     SystemRuntime *runtime = GetSystemRuntime();

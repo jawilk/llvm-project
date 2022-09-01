@@ -89,9 +89,9 @@ bool GDBRemoteCommunicationClient::HandshakeWithServer(Status *error_ptr) {
     // GDB server and flush them all
     StringExtractorGDBRemote response;
     PacketResult packet_result = PacketResult::Success;
-   /* while (packet_result == PacketResult::Success)
-      packet_result = ReadPacket(response, milliseconds(10), false);*/
-    llvm::errs() << "After ReadPacket\n";
+    //while (packet_result == PacketResult::Success)
+      //packet_result = ReadPacket(response, milliseconds(10), false);
+
     // The return value from QueryNoAckModeSupported() is true if the packet
     // was sent and _any_ response (including UNIMPLEMENTED) was received), or
     // false if no response was received. This quickly tells us if we have a

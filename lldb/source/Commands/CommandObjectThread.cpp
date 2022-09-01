@@ -374,10 +374,13 @@ public:
 
 protected:
   bool DoExecute(Args &command, CommandReturnObject &result) override {
+    llvm::errs() << "DoExecute thread step-in\n";
     Process *process = m_exe_ctx.GetProcessPtr();
     bool synchronous_execution = m_interpreter.GetSynchronous();
+    llvm::errs() << "synchronous_execution: " << synchronous_execution << "\n";
 
     const uint32_t num_threads = process->GetThreadList().GetSize();
+    llvm::errs() << "num_threads: " << num_threads << "\n";
     Thread *thread = nullptr;
 
     if (command.GetArgumentCount() == 0) {
@@ -443,6 +446,7 @@ protected:
     Status new_plan_status;
 
     if (m_step_type == eStepTypeInto) {
+      llvm::errs() << "eStepTypeInto\n";
       StackFrame *frame = thread->GetStackFrameAtIndex(0).get();
       assert(frame != nullptr);
 

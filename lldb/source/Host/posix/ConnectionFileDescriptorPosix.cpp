@@ -370,7 +370,7 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
   llvm::errs() << "ConnectionFileDescriptor::Read\n";
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
 
-  std::unique_lock<std::recursive_mutex> locker(m_mutex, std::defer_lock);
+  /*std::unique_lock<std::recursive_mutex> locker(m_mutex, std::defer_lock);
   if (!locker.try_lock()) {
     LLDB_LOGF(log,
               "%p ConnectionFileDescriptor::Read () failed to get the "
@@ -381,14 +381,14 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
 
     status = eConnectionStatusTimedOut;
     return 0;
-  }
+  }*/
 
-  if (m_shutting_down) {
+  /*if (m_shutting_down) {
     if (error_ptr)
       error_ptr->SetErrorString("shutting down");
     status = eConnectionStatusError;
     return 0;
-  }
+  }*/
   // TODO: synchronize with rbpf data over javascript
   /*status = BytesAvailable(timeout, error_ptr);
   if (status != eConnectionStatusSuccess)
@@ -472,13 +472,14 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
 
     return 0;
   }
+  llvm::errs() << "END ConnectionFileDescriptor::Read\n";
   return bytes_read;
 }
 
 size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
                                        ConnectionStatus &status,
                                        Status *error_ptr) {
-  llvm::errs() << "ConnectionFileDescriptor::Write\n";
+  llvm::errs() << "ConnectionFileDescriptor::Write 4 args\n";
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOGF(log,
             "%p ConnectionFileDescriptor::Write (src = %p, src_len = %" PRIu64
@@ -486,7 +487,7 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
             static_cast<void *>(this), static_cast<const void *>(src),
             static_cast<uint64_t>(src_len));
 
-  if (!IsConnected()) {
+  /*if (!IsConnected()) {
     if (error_ptr)
       error_ptr->SetErrorString("not connected");
     status = eConnectionStatusNoConnection;
@@ -498,7 +499,7 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
       error_ptr->SetErrorString("shutting down");
     status = eConnectionStatusError;
     return 0;
-  }
+  }*/
 
   Status error;
 
@@ -515,7 +516,7 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
               static_cast<uint64_t>(bytes_sent), error.AsCString());
   }
 
-  if (error_ptr)
+  /*if (error_ptr)
     *error_ptr = error;
 
   if (error.Fail()) {
@@ -537,7 +538,7 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
     }
 
     return 0;
-  }
+  }*/
 
   status = eConnectionStatusSuccess;
   return bytes_sent;
@@ -563,7 +564,7 @@ std::string ConnectionFileDescriptor::GetURI() { return m_uri; }
 ConnectionStatus
 ConnectionFileDescriptor::BytesAvailable(const Timeout<std::micro> &timeout,
                                          Status *error_ptr) {
-  //llvm::errs() << "ConnectionFileDescriptor::BytesAvailable\n";
+  llvm::errs() << "ConnectionFileDescriptor::BytesAvailable\n";
   // Don't need to take the mutex here separately since we are only called from
   // Read.  If we ever get used more generally we will need to lock here as
   // well.
@@ -759,7 +760,9 @@ ConnectionStatus ConnectionFileDescriptor::ConnectTCP(llvm::StringRef s,
 
   llvm::Expected<std::unique_ptr<Socket>> socket =
       Socket::TcpConnect(s, m_child_processes_inherit);
+  llvm::errs() << "After TcpConnect - ConnectionFileDescriptor::ConnectTCP\n";
   if (!socket) {
+    llvm::errs() << "!!!!!! NO SOCKET\n";
     if (error_ptr)
       *error_ptr = socket.takeError();
     else

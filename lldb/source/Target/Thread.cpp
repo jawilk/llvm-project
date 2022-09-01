@@ -331,6 +331,7 @@ void Thread::FrameSelectedCallback(StackFrame *frame) {
 }
 
 lldb::StopInfoSP Thread::GetStopInfo() {
+  llvm::errs() << "Thread::GetStopInfo\n";
   if (m_destroy_called)
     return m_stop_info_sp;
 
@@ -364,11 +365,13 @@ lldb::StopInfoSP Thread::GetStopInfo() {
 }
 
 void Thread::CalculatePublicStopInfo() {
+  llvm::errs() << "Thread::CalculatePublicStopInfo\n";
   ResetStopInfo();
   SetStopInfo(GetStopInfo());
 }
 
 lldb::StopInfoSP Thread::GetPrivateStopInfo() {
+  llvm::errs() << "Thread::GetPrivateStopInfo\n";
   if (m_destroy_called)
     return m_stop_info_sp;
 
@@ -410,6 +413,7 @@ lldb::StopInfoSP Thread::GetPrivateStopInfo() {
 }
 
 lldb::StopReason Thread::GetStopReason() {
+  llvm::errs() << "Thread::GetStopReason\n";
   lldb::StopInfoSP stop_info_sp(GetStopInfo());
   if (stop_info_sp)
     return stop_info_sp->GetStopReason();
@@ -477,6 +481,7 @@ bool Thread::ThreadStoppedForAReason(void) {
 }
 
 bool Thread::CheckpointThreadState(ThreadStateCheckpoint &saved_state) {
+  llvm::errs() << "Thread::CheckpointThreadState\n";
   saved_state.register_backup_sp.reset();
   lldb::StackFrameSP frame_sp(GetStackFrameAtIndex(0));
   if (frame_sp) {
@@ -567,6 +572,7 @@ std::string Thread::GetStopDescription() {
 }
 
 std::string Thread::GetStopDescriptionRaw() {
+  llvm::errs() << "Thread::GetStopDescriptionRaw\n";
   StopInfoSP stop_info_sp = GetStopInfo();
   std::string raw_stop_description;
   if (stop_info_sp && stop_info_sp->IsValid()) {

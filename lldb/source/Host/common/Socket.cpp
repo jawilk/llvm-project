@@ -6,9 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-/*#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__)
 #include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
-#endif*/
+#endif
 
 #include "lldb/Host/Socket.h"
 
@@ -179,20 +179,21 @@ llvm::Expected<std::unique_ptr<Socket>> Socket::JavascriptConnect() {
 llvm::Expected<std::unique_ptr<Socket>>
 Socket::TcpConnect(llvm::StringRef host_and_port,
                    bool child_processes_inherit) {
-  llvm::errs() << "Socket::TcpConnect\ņ";
+  llvm::errs() << "Socket::TcpConnect\n";
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOG(log, "host_and_port = {0}", host_and_port);
 
   Status error;
   std::unique_ptr<Socket> connect_socket(
       Create(ProtocolTcp, child_processes_inherit, error));
+  llvm::errs() << "After Create - Socket::TcpConnect\n";
   if (error.Fail())
     return error.ToError();
 
   error = connect_socket->Connect(host_and_port);
   if (error.Success())
     return std::move(connect_socket);
-
+  llvm::errs() << "ERROR Socket::TcpConnect\n";
   return error.ToError();
 }
 
@@ -348,7 +349,7 @@ bool Socket::DecodeHostAndPort(llvm::StringRef host_and_port,
 
 IOObject::WaitableHandle Socket::GetWaitableHandle() {
   // TODO: On Windows, use WSAEventSelect
-  //llvm::errs() << "Socket::GetWaitableHandle\ņ";
+  llvm::errs() << "Socket::GetWaitableHandle\ņ";
   return m_socket;
 }
 
@@ -363,8 +364,10 @@ extern "C" {
 }
 #endif*/
 Status Socket::Read(void *buf, size_t &num_bytes) {
-  llvm::errs() << "-- Socket::Read\n";
+  llvm::errs() << "Socket::Read (REAL READ)\n";
+  llvm::errs() << "m_socket: " << m_socket << "\n";
   Status error;
+
   /*#if defined(__EMSCRIPTEN__)
   num_bytes = EM_ASM_INT({
       return get_lldb_buf();
@@ -376,7 +379,8 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
   #else*/
   int bytes_received = 0;
   do {
-    bytes_received = ::recv(m_socket, static_cast<char *>(buf), num_bytes, 0);
+    bytes_received = ::recv(3, static_cast<char *>(buf), num_bytes, 0);
+    emscripten_sleep(100);
   } while (bytes_received < 0 && IsInterrupted());
 
   if (bytes_received < 0) {
@@ -384,6 +388,13 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
     num_bytes = 0;
   } else
     num_bytes = bytes_received;
+
+  llvm::errs() << "num_bytes: " << num_bytes << "\n";
+  if (num_bytes > 0) {
+    for (int i=0; i<num_bytes; i++)
+      llvm::errs() << ((char*) buf)[i];
+    llvm::errs() << "\n";
+  }
 
   Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
   if (log) {
@@ -396,12 +407,12 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
               static_cast<int64_t>(bytes_received), error.AsCString());
   }
   //#endif
-  llvm::errs() << "num_bytes: " << num_bytes << "\n";
-  llvm::errs() << "END Socket::Read error: " << error.AsCString() << "\n";
+  llvm::errs() << "END Socket::Read error type: " << error.AsCString() << "\n";
   return error;
 }
 
 Status Socket::Write(const void *buf, size_t &num_bytes) {
+  llvm::errs() << "Socket::Write 2 args\n";
   const size_t src_len = num_bytes;
   Status error;
   int bytes_sent = 0;
@@ -484,7 +495,7 @@ extern "C" {
 #endif*/
 
 size_t Socket::Send(const void *buf, const size_t num_bytes) {
-  llvm::errs() << "-- Socket::Send len: " << num_bytes << " payload: ";
+  llvm::errs() << "Socket::Send (REAL SEND) len: " << num_bytes << " payload: ";
   for (int i=0; i<num_bytes; i++)
       llvm::errs() << ((char*) buf)[i];
   llvm::errs() << "\n";
@@ -500,7 +511,7 @@ size_t Socket::Send(const void *buf, const size_t num_bytes) {
       }, num_bytes, static_cast<const char *>(buf));
   return num_bytes;*/
   //#else
-  return ::send(m_socket, static_cast<const char *>(buf), num_bytes, 0);
+  return ::send(3, static_cast<const char *>(buf), num_bytes, 0);
   //#endif
 }
 
@@ -515,6 +526,7 @@ void Socket::SetLastError(Status &error) {
 NativeSocket Socket::CreateSocket(const int domain, const int type,
                                   const int protocol,
                                   bool child_processes_inherit, Status &error) {
+  llvm::errs() << "Socket::CreateSocket\n";
   error.Clear();
   auto socket_type = type;
 #ifdef SOCK_CLOEXEC
@@ -522,6 +534,7 @@ NativeSocket Socket::CreateSocket(const int domain, const int type,
     socket_type |= SOCK_CLOEXEC;
 #endif
   auto sock = ::socket(domain, socket_type, protocol);
+  llvm::errs() << "sock: " << sock << "\n";
   if (sock == kInvalidSocketValue)
     SetLastError(error);
 

@@ -271,6 +271,7 @@ size_t Communication::GetCachedBytes(void *dst, size_t dst_len) {
 void Communication::AppendBytesToCache(const uint8_t *bytes, size_t len,
                                        bool broadcast,
                                        ConnectionStatus status) {
+  llvm::errs() << "Communication::AppendBytesToCache\n";
   LLDB_LOG(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION),
            "{0} Communication::AppendBytesToCache (src = {1}, src_len = {2}, "
            "broadcast = {3})",
@@ -306,6 +307,7 @@ size_t Communication::ReadFromConnection(void *dst, size_t dst_len,
 bool Communication::ReadThreadIsRunning() { return m_read_thread_enabled; }
 
 lldb::thread_result_t Communication::ReadThread(lldb::thread_arg_t p) {
+  llvm::errs() << "Communication::ReadThread\n";
   Communication *comm = (Communication *)p;
 
   Log *log(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION));

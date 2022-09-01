@@ -340,6 +340,7 @@ bool ThreadGDBRemote::PrivateSetRegisterValue(uint32_t reg, uint64_t regval) {
 }
 
 bool ThreadGDBRemote::CalculateStopInfo() {
+  llvm::errs() << "hreadGDBRemote::CalculateStopInfo\n";
   ProcessSP process_sp(GetProcess());
   if (process_sp)
     return static_cast<ProcessGDBRemote *>(process_sp.get())

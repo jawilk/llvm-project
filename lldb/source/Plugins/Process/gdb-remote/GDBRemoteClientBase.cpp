@@ -183,7 +183,7 @@ GDBRemoteClientBase::SendPacketAndWaitForResponse(
     llvm::StringRef payload, StringExtractorGDBRemote &response,
     std::chrono::seconds interrupt_timeout) {
   llvm::errs() << "SendPacketAndWaitForResponse\n";
-  Lock lock(*this, interrupt_timeout);
+  /*Lock lock(*this, interrupt_timeout);
   if (!lock) {
     if (Log *log =
             ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PROCESS))
@@ -192,7 +192,7 @@ GDBRemoteClientBase::SendPacketAndWaitForResponse(
                 "packet '%.*s'",
                 __FUNCTION__, int(payload.size()), payload.data());
     return PacketResult::ErrorSendFailed;
-  }
+  }*/
 
   return SendPacketAndWaitForResponseNoLock(payload, response);
 }
@@ -228,11 +228,15 @@ GDBRemoteClientBase::SendPacketAndWaitForResponseNoLock(
     llvm::StringRef payload, StringExtractorGDBRemote &response) {
   llvm::errs() << "GDBRemoteClientBase::SendPacketAndWaitForResponseNoLock\n";
   PacketResult packet_result = SendPacketNoLock(payload);
+  // Result from sending
   if (packet_result != PacketResult::Success)
     return packet_result;
 
+  // TODO: emscripten async sleep till data is there
+  llvm::errs() << "SENT before try receive loop GDBRemoteClientBase::SendPacketAndWaitForResponseNoLock\n";
   const size_t max_response_retries = 3;
   for (size_t i = 0; i < max_response_retries; ++i) {
+    // TODO: Replace with recv buffer pop
     packet_result = ReadPacket(response, GetPacketTimeout(), true);
     // Make sure we received a response
     if (packet_result != PacketResult::Success)

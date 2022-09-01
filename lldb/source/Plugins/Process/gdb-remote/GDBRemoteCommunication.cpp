@@ -6,6 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#endif
+
 #include "GDBRemoteCommunication.h"
 
 #include <climits>
@@ -142,6 +146,7 @@ GDBRemoteCommunication::SendRawPacketNoLock(llvm::StringRef packet,
     const char *packet_data = packet.data();
     const size_t packet_length = packet.size();
     llvm::errs() << "(gdb-remote) Packet: " << packet_data << "\n";
+    llvm::errs() << "SEND HOOK HERE GDB-REMOTE !!\n";
     size_t bytes_written = Write(packet_data, packet_length, status, nullptr);
     if (log) {
       size_t binary_start_offset = 0;
@@ -231,9 +236,10 @@ GDBRemoteCommunication::ReadPacket(StringExtractorGDBRemote &response,
                                    Timeout<std::micro> timeout,
                                    bool sync_on_timeout) {
   llvm::errs() << "GDBRemoteCommunication::ReadPacket\n";
-  if (m_read_thread_enabled)
-    return PopPacketFromQueue(response, timeout);
-  else
+  llvm::errs() << "IS THREADS: " << m_read_thread_enabled << "\n";
+  //if (m_read_thread_enabled)
+    //return PopPacketFromQueue(response, timeout);
+  //else
     return WaitForPacketNoLock(response, timeout, sync_on_timeout);
 }
 
@@ -278,33 +284,36 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
   Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PACKETS));
 
   // Check for a packet from our cache first without trying any reading...
-  if (CheckForPacket(nullptr, 0, packet) != PacketType::Invalid)
-    return PacketResult::Success;
-  llvm::errs() << "After CheckForPacket\n";
+  //if (CheckForPacket(nullptr, 0, packet) != PacketType::Invalid)
+    //return PacketResult::Success;
   bool timed_out = false;
   bool disconnected = false;
   while (IsConnected() && !timed_out) {
     lldb::ConnectionStatus status = eConnectionStatusNoConnection;
     size_t bytes_read = Read(buffer, sizeof(buffer), timeout, status, &error);
     llvm::errs() << "After Read() bytes_read: " << bytes_read << "\n";
-    LLDB_LOGV(log,
+    /*LLDB_LOGV(log,
               "Read(buffer, sizeof(buffer), timeout = {0}, "
               "status = {1}, error = {2}) => bytes_read = {3}",
               timeout, Communication::ConnectionStatusAsString(status), error,
-              bytes_read);
+              bytes_read);*/
 
     if (bytes_read > 0) {
       if (CheckForPacket(buffer, bytes_read, packet) != PacketType::Invalid) {
-      llvm::errs() << "PacketResult::Success\n";
+        llvm::errs() << "PacketResult::Success\n";
         return PacketResult::Success;
-}
+      }
+    }
+    /*} else {
+
+      //emscripten_sleep(100);
+
       llvm::errs() << "NOT PacketResult::Success\n";
-    } else {
-      llvm::errs() << "else\n";
       switch (status) {
       case eConnectionStatusTimedOut:
       case eConnectionStatusInterrupted:
         if (sync_on_timeout) {
+llvm::errs() << "SYNC ON TIMEOUT\n";
           /// Sync the remote GDB server and make sure we get a response that
           /// corresponds to what we send.
           ///
@@ -396,6 +405,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
         timed_out = true;
         break;
       case eConnectionStatusSuccess:
+llvm::errs() << "eConnectionStatusSuccess\n";
         // printf ("status = success but error = %s\n",
         // error.AsCString("<invalid>"));
         break;
@@ -404,11 +414,12 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
       case eConnectionStatusNoConnection:
       case eConnectionStatusLostConnection:
       case eConnectionStatusError:
+llvm::errs() << "DICONNECTED\n";
         disconnected = true;
         Disconnect();
         break;
       }
-    }
+    }*/
   }
   llvm::errs() << "After while\n";
   packet.Clear();
@@ -654,7 +665,7 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
                                        StringExtractorGDBRemote &packet) {
   llvm::errs() << "GDBRemoteCommunication::CheckForPacket\n";
   // Put the packet data into the buffer in a thread safe fashion
-  std::lock_guard<std::recursive_mutex> guard(m_bytes_mutex);
+  //std::lock_guard<std::recursive_mutex> guard(m_bytes_mutex);
 
   Log *log(ProcessGDBRemoteLog::GetLogIfAllCategoriesSet(GDBR_LOG_PACKETS));
 
@@ -664,13 +675,20 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
       LLDB_LOGF(log, "GDBRemoteCommunication::%s adding %u bytes: %.*s",
                 __FUNCTION__, (uint32_t)src_len, (uint32_t)src_len, src);
     }
-    m_bytes.append((const char *)src, src_len);
+  llvm::errs() << "before append GDBRemoteCommunication::CheckForPacket\n";
+  m_bytes.append((const char *)src, src_len);
+  llvm::errs() << "after append GDBRemoteCommunication::CheckForPacket\n";
   }
 
   bool isNotifyPacket = false;
+  llvm::errs() << "before not empty GDBRemoteCommunication::CheckForPacket\n";
+  if (m_bytes.empty()) {
+    llvm::errs() << "Bytes empty, sleeping...\n";
+  }
 
   // Parse up the packets into gdb remote packets
   if (!m_bytes.empty()) {
+      llvm::errs() << "not empty GDBRemoteCommunication::CheckForPacket\n";
     // end_idx must be one past the last valid packet byte. Start it off with
     // an invalid value that is the same as the current index.
     size_t content_start = 0;
@@ -1242,6 +1260,7 @@ void GDBRemoteCommunication::SetPacketRecorder(
 llvm::Error
 GDBRemoteCommunication::ConnectLocally(GDBRemoteCommunication &client,
                                        GDBRemoteCommunication &server) {
+  llvm::errs() << "GDBRemoteCommunication::ConnectLocally\n";
   const bool child_processes_inherit = false;
   const int backlog = 5;
   TCPSocket listen_socket(true, child_processes_inherit);
@@ -1300,6 +1319,7 @@ GDBRemoteCommunication::ScopedTimeout::~ScopedTimeout() {
 void GDBRemoteCommunication::AppendBytesToCache(const uint8_t *bytes,
                                                 size_t len, bool broadcast,
                                                 lldb::ConnectionStatus status) {
+  llvm::errs() << "GDBRemoteCommunication::AppendBytesToCache\n";
   StringExtractorGDBRemote packet;
 
   while (true) {

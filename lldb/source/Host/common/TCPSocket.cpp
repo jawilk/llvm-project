@@ -138,29 +138,54 @@ std::string TCPSocket::GetRemoteConnectionURI() const {
 }
 
 Status TCPSocket::CreateSocket(int domain) {
-  llvm::errs() << "TCPSocket::CreateSocket\n";
+  llvm::errs() << "TCPSocket::CreateSocket domain: " << domain << "\n";
   Status error;
-  if (IsValid())
+  /*if (IsValid())
     error = Close();
   if (error.Fail())
     return error;
   m_socket = Socket::CreateSocket(domain, kType, IPPROTO_TCP,
-                                  m_child_processes_inherit, error);
+                                  m_child_processes_inherit, error);*/
+  m_socket = 3;
+  llvm::errs() << "m_socket: " << m_socket << "\n";
   return error;
 }
 
 Status TCPSocket::Connect(llvm::StringRef name) {
-  llvm::errs() << "TCPSocket::Connect - name: " << name << "\n";
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
-  LLDB_LOGF(log, "TCPSocket::%s (host/port = %s)", __FUNCTION__, name.data());
-
   Status error;
-  std::string host_str;
+  /*std::string host_str;
   std::string port_str;
   int32_t port = INT32_MIN;
   if (!DecodeHostAndPort(name, host_str, port_str, port, &error))
     return error;
 
+  llvm::errs() << "TCPSocket::Connect - name: " << name << "\n";
+  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
+  LLDB_LOGF(log, "TCPSocket::%s (host/port = %s)", __FUNCTION__, name.data());
+
+  struct sockaddr_in addr;
+  int res;
+
+  int socket_fd_own = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  llvm::errs() << "socket_fd_own: " << socket_fd_own << "\n";
+  if (socket_fd_own == -1) {
+    perror("cannot create socket");
+  }
+  fcntl(socket_fd_own, F_SETFL, O_NONBLOCK);
+
+  // connect the socket
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+  }
+
+  res = connect(socket_fd_own, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
+    perror("connect failed");
+  }
+  /*
   std::vector<SocketAddress> addresses = SocketAddress::GetAddressInfo(
       host_str.c_str(), nullptr, AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP);
   for (SocketAddress &address : addresses) {
@@ -169,21 +194,27 @@ Status TCPSocket::Connect(llvm::StringRef name) {
       continue;
 
     address.SetPort(port);
+    int res = connect(socket_fd_own, (struct sockaddr *)&addr, sizeof(addr));
+    if (res == -1 && errno != EINPROGRESS) {
+      llvm::errs() << "TCPSocket::Connect Close: " << GetNativeSocket() << "\n";
+    }
 
     if (-1 == llvm::sys::RetryAfterSignal(-1, ::connect,
           GetNativeSocket(), &address.sockaddr(), address.GetLength())) {
+      llvm::errs() << "TCPSocket::Connect Close: " << GetNativeSocket() << "\n";
       CLOSE_SOCKET(GetNativeSocket());
       continue;
     }
 
-    SetOptionNoDelay();
-
+    SetOptionNoDelay();*/
+    llvm::errs() << "m_socket: " << m_socket << "\n";
+    m_socket = 5;
     error.Clear();
     return error;
-  }
-
+  /*}
+  llvm::errs() << "Failed to connect port END TCPSocket::Connect" << name << "\n";
   error.SetErrorString("Failed to connect port");
-  return error;
+  return error;*/
 }
 
 Status TCPSocket::Listen(llvm::StringRef name, int backlog) {

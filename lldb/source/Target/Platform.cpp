@@ -1847,21 +1847,22 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
   llvm::errs() << "Before CreateProcess\n";
   lldb::ProcessSP process_sp =
       target->CreateProcess(debugger.GetListener(), plugin_name, nullptr, true);
-
+  llvm::errs() << "After CreateProcess\n";
   if (!process_sp)
     return nullptr;
 
   // If this private method is called with a stream we are synchronous.
-  //const bool synchronous = stream != nullptr;
-  const bool synchronous = false;
-
+  const bool synchronous = stream != nullptr;
+  //const bool synchronous = false;
+  llvm::errs() << "IS SYNCHRONOUS: " << synchronous << "\n";
   ListenerSP listener_sp(
       Listener::MakeListener("lldb.Process.ConnectProcess.hijack"));
   if (synchronous)
     process_sp->HijackProcessEvents(listener_sp);
 
-  llvm::errs() << "Before ConnectRemote\n";
+  llvm::errs() << "Before process ConnectRemote\n";
   error = process_sp->ConnectRemote(connect_url);
+  llvm::errs() << "After process ConnectRemote\n";
   if (error.Fail()) {
     if (synchronous)
       process_sp->RestoreProcessEvents();
@@ -1879,6 +1880,8 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
     Process::HandleProcessStateChangedEvent(event_sp, stream,
                                             pop_process_io_handler);
   }
+  else
+    llvm::errs() << "NOT synchronous\n";
   llvm::errs() << "END Platform::DoConnectProcess\n";
 
   return process_sp;

@@ -2986,8 +2986,9 @@ Status Process::ConnectRemote(llvm::StringRef remote_url) {
 
   // Find the process and its architecture.  Make sure it matches the
   // architecture of the current Target, and if not adjust it.
-
+  
   Status error(DoConnectRemote(remote_url));
+  llvm::errs() << "After DoConnectRemote Process::ConnectRemote url: " << remote_url << "\n";
   if (error.Success()) {
     if (GetID() != LLDB_INVALID_PROCESS_ID) {
       EventSP event_sp;

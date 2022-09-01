@@ -8,6 +8,21 @@
 #include "lldb/API/SBTarget.h"
 #if defined(__EMSCRIPTEN__)
 #include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <assert.h>
+
+#define SOCKK 9007
+
 /*#include </home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/websocket.h>
 #include </home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/threading.h>
 #include </home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/posix_socket.h>
@@ -1074,6 +1089,81 @@ public:
   }
 };
 
+/*
+void socket_read() {//void *buf, size_t &num_bytes) {
+  llvm::errs() << "socket_read (OWN)\n";
+  Status error;
+  
+  int bytes_received = 0;
+  do {
+    bytes_received = recv(socket_fd_own, static_cast<char *>(buf), num_bytes, 0);
+  } while (bytes_received < 0);
+
+  if (bytes_received < 0) {
+    SetLastError(error);
+    num_bytes = 0;
+  } else
+    num_bytes = bytes_received;
+
+  llvm::errs() << "num_bytes: " << num_bytes << "\n";
+  llvm::errs() << "END socket_read (OWN) error: " << error.AsCString() << "\n";
+  return error;
+}
+
+void socket_send() {//const void *buf, const size_t num_bytes) {
+  llvm::errs() << "socket_send (OWN)\n"; //len: " << num_bytes << " payload: ";
+  /*for (int i=0; i<num_bytes; i++)
+      llvm::errs() << ((char*) buf)[i];
+  llvm::errs() << "\n";*/
+/*
+  return send(socket.fd, static_cast<const char *>(buf), num_bytes, 0);
+}
+
+void main_loop_sockets() {
+}
+*/
+/*
+void finish(int result);
+std::string m_bytes_own = "";
+int socket_fd_own;
+void main_loop() {
+  fd_set fdr;
+  int res;
+  size_t bytes_read;
+  uint8_t buf[1024];
+
+  // make sure that socket_fd_own is ready to read / write
+  FD_ZERO(&fdr);
+  FD_SET(3, &fdr);
+  res = select(3+1, &fdr, NULL, NULL, NULL);
+  if (res == -1) {
+    perror("select failed");
+    finish(EXIT_FAILURE);
+  }
+  if (!FD_ISSET(3, &fdr)) {
+    return;
+  }
+  llvm::errs() << "MAIN LOOP before recv\n";
+  bytes_read = recv(3, buf, sizeof(buf), 0);
+  if (bytes_read > 0) {
+      m_bytes_own.append((const char *)buf, bytes_read);
+      llvm::errs() << "bytes_read: " << bytes_read << "\n";
+      for (int i=0; i<bytes_read; i++)
+          llvm::errs() << ((char*) buf)[i];
+      llvm::errs() << "\n";
+  }
+}
+*/
+
+int socket_fd_own;
+void finish(int result) {
+  printf("finish: %d\n", result);
+  if (socket_fd_own) {
+    close(socket_fd_own);
+    socket_fd_own = 0;
+  }
+  //emscripten_cancel_main_loop();
+}
 //static LLDBSentry sentry;
 static SBDebugger debugger;
 static LLDBSentry sentry;
@@ -1093,8 +1183,37 @@ int main(int argc, char const *argv[]) {
       emscripten_thread_sleep(100);
     } while (readyState == 0);
     #endif*/
+    
+  // TCP
+  struct sockaddr_in addr;
+  int res;
 
-    return 0;
+  socket_fd_own = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  llvm::errs() << "socket_fd_own: " << socket_fd_own << "\n";
+  if (socket_fd_own == -1) {
+    perror("cannot create socket");
+    finish(EXIT_FAILURE);
+  }
+  fcntl(socket_fd_own, F_SETFL, O_NONBLOCK);
+
+  // connect the socket
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(SOCKK);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+    finish(EXIT_FAILURE);
+  }
+
+  res = connect(socket_fd_own, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
+    perror("connect failed");
+    finish(EXIT_FAILURE);
+  }
+
+  //emscripten_set_main_loop(main_loop, 60, 0);
+  
+  return 0;
 }
 
 /*extern "C" {
@@ -1124,14 +1243,6 @@ extern "C" {
         char* ret_val = const_cast<char*>(command_result.GetOutput());
         std::cout << "lldb reply: " << ret_val << "\n";
         return ret_val;
-    }
-}
-
-extern "C" {
-    EMSCRIPTEN_KEEPALIVE int add(int a, int b) {
-        std::cout << "lldb received a: " << a << "\n";
-        std::cout << "lldb received b: " << b << "\n";
-        return a+b;
     }
 }
 #endif
