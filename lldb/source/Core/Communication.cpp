@@ -200,6 +200,7 @@ size_t Communication::WriteAll(const void *src, size_t src_len,
 }
 
 bool Communication::StartReadThread(Status *error_ptr) {
+  llvm::errs() << "START Communication::StartReadThread\n";
   if (error_ptr)
     error_ptr->Clear();
 

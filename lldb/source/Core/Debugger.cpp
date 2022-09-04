@@ -1669,6 +1669,7 @@ lldb::thread_result_t Debugger::EventHandlerThread(lldb::thread_arg_t arg) {
 }
 
 bool Debugger::StartEventHandlerThread() {
+  llvm::errs() << "START Debugger::StartEventHandlerThread\n";
   if (!m_event_handler_thread.IsJoinable()) {
     // We must synchronize with the DefaultEventHandler() thread to ensure it
     // is up and running and listening to events before we return from this

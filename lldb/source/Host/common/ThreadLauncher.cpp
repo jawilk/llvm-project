@@ -24,6 +24,7 @@ using namespace lldb_private;
 llvm::Expected<HostThread> ThreadLauncher::LaunchThread(
     llvm::StringRef name, lldb::thread_func_t thread_function,
     lldb::thread_arg_t thread_arg, size_t min_stack_byte_size) {
+  llvm::errs() << "------------------ ThreadLauncher::LaunchThread !!!!!!\n";
   // Host::ThreadCreateTrampoline will delete this pointer for us.
   HostThreadCreateInfo *info_ptr =
       new HostThreadCreateInfo(name.data(), thread_function, thread_arg);

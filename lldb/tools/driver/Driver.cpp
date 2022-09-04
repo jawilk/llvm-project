@@ -6,6 +6,190 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+
+#include "lldb/API/SBDebugger.h"
+#include "lldb/API/SBError.h"
+#include "lldb/API/SBTarget.h"
+#include "lldb/API/SBThread.h"
+#include "lldb/API/SBProcess.h"
+#include "lldb/API/SBValueList.h"
+#include "lldb/API/SBCommandReturnObject.h"
+#include "lldb/API/SBCommandInterpreter.h"
+
+/*#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>*/
+
+#include <string.h>
+#include <iostream>
+
+#define SOCKK 9007
+#define MAX_REGS 13
+
+using namespace lldb;
+using namespace std;
+
+class LLDBSentry {
+public:
+  LLDBSentry() {
+    // Initialize LLDB
+    SBDebugger::Initialize();
+  }
+  ~LLDBSentry() {
+    // Terminate LLDB
+    SBDebugger::Terminate();
+  }
+};
+
+// Emscripten globals
+//int SOCKET_FD_EMSCRIPTEN;
+static SBDebugger debugger;
+static LLDBSentry sentry;
+char registers_ret[256];
+char arguments_ret[256];
+
+/*void finish(int result) {
+  if (SOCKET_FD_EMSCRIPTEN) {
+    close(SOCKET_FD_EMSCRIPTEN);
+    SOCKET_FD_EMSCRIPTEN = 0;
+  }
+  //emscripten_cancel_main_loop();
+}*/
+
+int main(int argc, char const *argv[]) {
+    std::cout << "LLDB - INIT main() c++\n";
+
+    debugger = SBDebugger::Create(false);
+    if (!debugger.IsValid())
+        fprintf(stderr, "error: failed to create a debugger object\n");
+    debugger.SetAsync(false);
+    
+  // TCP
+  /*struct sockaddr_in addr;
+  int res;
+
+  SOCKET_FD_EMSCRIPTEN = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  llvm::errs() << "SOCKET_FD_EMSCRIPTEN: " << SOCKET_FD_EMSCRIPTEN << "\n";
+  if (SOCKET_FD_EMSCRIPTEN == -1) {
+    perror("cannot create socket");
+    finish(EXIT_FAILURE);
+  }
+  fcntl(SOCKET_FD_EMSCRIPTEN, F_SETFL, O_NONBLOCK);
+
+  // connect the socket
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(SOCKK);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+    finish(EXIT_FAILURE);
+  }
+
+  res = connect(SOCKET_FD_EMSCRIPTEN, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
+    perror("connect failed");
+    finish(EXIT_FAILURE);
+  }
+
+  //emscripten_set_main_loop(main_loop, 60, 0);*/
+  
+  return 0;
+}
+
+// API
+// EMSCRIPTEN_KEEPALIVE will add to EXPORTED_FUNCTIONS automatically
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE char* execute_command(char* input) {
+        std::cout << "LLDB - execute_command: " << input << "\n";
+
+        char command[1024];
+        SBCommandReturnObject command_result;
+
+        snprintf(command, sizeof(command), input);
+        debugger.GetCommandInterpreter().HandleCommand(command,
+                                                      command_result);
+        char* ret_val = const_cast<char*>(command_result.GetOutput());
+        std::cout << "lldb reply: " << ret_val << "\n";
+        return ret_val;
+    }
+}
+
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE void create_target(const char* exe_file_path) {
+        std::cout << "LLDB - create_target: " << exe_file_path << "\n";
+	const char *arch = NULL;
+        const char *platform = NULL;
+        const bool add_dependent_libs = false;
+        SBError error;
+        debugger.CreateTarget(exe_file_path, arch, platform,
+                                            add_dependent_libs, error);
+    }
+}
+
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE const char* get_registers() {
+        std::cout << "LLDB - get_registers()\n";
+
+        SBValueList registers;
+        std::string registers_value_str;
+
+        registers = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetRegisters();
+        for (int i=0; i<MAX_REGS; i++) {
+            registers_value_str.append(registers.GetValueAtIndex(0).GetChildAtIndex(i).GetValue());
+            registers_value_str.append(";");
+        }
+        strcpy(registers_ret, registers_value_str.c_str());
+        return registers_ret;
+    }
+}
+
+/*extern "C" {
+    EMSCRIPTEN_KEEPALIVE char* get_variables() {
+        std::cout << "LLDB - get_variables()\n";
+
+        char* registers_value_str = "";
+
+        lldb::SBValueList registers = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetRegisters();
+        for (int i=0; i<MAX_REGS; i++)
+    cout << "1st value: " << regs.GetValueAtIndex(0).GetChildAtIndex(i).GetValueAsUnsigned() << "\n"; 
+
+        return registers_value_str;
+    }
+}*/
+
+/*extern "C" {
+    EMSCRIPTEN_KEEPALIVE char* get_func_arguments() {
+        std::cout << "LLDB - get_func_arguments()\n";
+
+    lldb::SBValueList arguments = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(true, false, false, true);
+
+        char* arguments_value_str = "";
+
+        size_t len = arguments.GetSize();
+        // Format: len;name=value;...;
+        for (int i=0; i<len; i++) {
+            arguments_value_str.append(len);
+            arguments_value_str.append(";"); arguments_value_str.append(arguments.GetValueAtIndex(0).GetName());
+            arguments_value_str.append("=");          arguments_value_str.append(arguments.GetValueAtIndex(0).GetValue());
+            arguments_value_str.append(";");
+        }
+        strcpy(arguments_ret, arguments_value_str.c_str());
+        return arguments_ret;
+    }
+}*/
+
+
+#else // ---------------------------------------------------------------------------------
+
 #include "Driver.h"
 
 #include "lldb/API/SBCommandInterpreter.h"
@@ -15,15 +199,14 @@
 #include "lldb/API/SBFile.h"
 #include "lldb/API/SBHostOS.h"
 #include "lldb/API/SBLanguageRuntime.h"
-#include "lldb/API/SBReproducer.h"
 #include "lldb/API/SBStream.h"
 #include "lldb/API/SBStringList.h"
-#include "lldb/API/SBStructuredData.h"
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/Path.h"
+#include "llvm/Support/Process.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
@@ -42,6 +225,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+
+// Includes for pipe()
+#if defined(_WIN32)
+#include <fcntl.h>
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #if !defined(__APPLE__)
 #include "llvm/Support/DataTypes.h"
@@ -193,9 +384,6 @@ SBError Driver::ProcessArgs(const opt::InputArgList &args, bool &exiting) {
   if (args.hasArg(OPT_python_path)) {
     m_option_data.m_print_python_path = true;
   }
-  if (args.hasArg(OPT_print_script_interpreter_info)) {
-    m_option_data.m_print_script_interpreter_info = true;
-  }
 
   if (args.hasArg(OPT_batch)) {
     m_option_data.m_batch = true;
@@ -296,7 +484,6 @@ SBError Driver::ProcessArgs(const opt::InputArgList &args, bool &exiting) {
                                      arg_value);
       return error;
     }
-    m_debugger.SetREPLLanguage(m_option_data.m_repl_lang);
   }
 
   if (args.hasArg(OPT_repl)) {
@@ -394,23 +581,61 @@ SBError Driver::ProcessArgs(const opt::InputArgList &args, bool &exiting) {
     return error;
   }
 
-  if (m_option_data.m_print_script_interpreter_info) {
-    SBStructuredData info =
-        m_debugger.GetScriptInterpreterInfo(m_debugger.GetScriptLanguage());
-    if (!info) {
-      error.SetErrorString("no script interpreter.");
-    } else {
-      SBStream stream;
-      error = info.GetAsJSON(stream);
-      if (error.Success()) {
-        llvm::outs() << stream.GetData() << '\n';
-      }
-    }
-    exiting = true;
-    return error;
+  return error;
+}
+
+static inline int OpenPipe(int fds[2], std::size_t size) {
+#ifdef _WIN32
+  return _pipe(fds, size, O_BINARY);
+#else
+  (void)size;
+  return pipe(fds);
+#endif
+}
+
+static ::FILE *PrepareCommandsForSourcing(const char *commands_data,
+                                          size_t commands_size) {
+  enum PIPES { READ, WRITE }; // Indexes for the read and write fds
+  int fds[2] = {-1, -1};
+
+  if (OpenPipe(fds, commands_size) != 0) {
+    WithColor::error()
+        << "can't create pipe file descriptors for LLDB commands\n";
+    return nullptr;
   }
 
-  return error;
+  ssize_t nrwr = write(fds[WRITE], commands_data, commands_size);
+  if (size_t(nrwr) != commands_size) {
+    WithColor::error()
+        << format(
+               "write(%i, %p, %" PRIu64
+               ") failed (errno = %i) when trying to open LLDB commands pipe",
+               fds[WRITE], static_cast<const void *>(commands_data),
+               static_cast<uint64_t>(commands_size), errno)
+        << '\n';
+    llvm::sys::Process::SafelyCloseFileDescriptor(fds[READ]);
+    llvm::sys::Process::SafelyCloseFileDescriptor(fds[WRITE]);
+    return nullptr;
+  }
+
+  // Close the write end of the pipe, so that the command interpreter will exit
+  // when it consumes all the data.
+  llvm::sys::Process::SafelyCloseFileDescriptor(fds[WRITE]);
+
+  // Open the read file descriptor as a FILE * that we can return as an input
+  // handle.
+  ::FILE *commands_file = fdopen(fds[READ], "rb");
+  if (commands_file == nullptr) {
+    WithColor::error() << format("fdopen(%i, \"rb\") failed (errno = %i) "
+                                 "when trying to open LLDB commands pipe",
+                                 fds[READ], errno)
+                       << '\n';
+    llvm::sys::Process::SafelyCloseFileDescriptor(fds[READ]);
+    return nullptr;
+  }
+
+  // 'commands_file' now owns the read descriptor.
+  return commands_file;
 }
 
 std::string EscapeString(std::string arg) {
@@ -542,26 +767,31 @@ int Driver::MainLoop() {
   // Check if we have any data in the commands stream, and if so, save it to a
   // temp file
   // so we can then run the command interpreter using the file contents.
+  const char *commands_data = commands_stream.GetData();
+  const size_t commands_size = commands_stream.GetSize();
+
   bool go_interactive = true;
-  if ((commands_stream.GetData() != nullptr) &&
-      (commands_stream.GetSize() != 0u)) {
-    SBError error = m_debugger.SetInputString(commands_stream.GetData());
-    if (error.Fail()) {
-      WithColor::error() << error.GetCString() << '\n';
+  if ((commands_data != nullptr) && (commands_size != 0u)) {
+    FILE *commands_file =
+        PrepareCommandsForSourcing(commands_data, commands_size);
+
+    if (commands_file == nullptr) {
+      // We should have already printed an error in PrepareCommandsForSourcing.
       return 1;
     }
 
+    m_debugger.SetInputFileHandle(commands_file, true);
+
     // Set the debugger into Sync mode when running the command file. Otherwise
     // command files that run the target won't run in a sensible way.
-    bool old_async = m_debugger.GetAsync();
+    //bool old_async = m_debugger.GetAsync();
     m_debugger.SetAsync(false);
 
     SBCommandInterpreterRunOptions options;
-    options.SetAutoHandleEvents(true);
+    options.SetAutoHandleEvents(false);
     options.SetSpawnThread(false);
     options.SetStopOnError(true);
     options.SetStopOnCrash(m_option_data.m_batch);
-    options.SetEchoCommands(!m_option_data.m_source_quietly);
 
     SBCommandInterpreterRunResult results =
         m_debugger.RunCommandInterpreter(options);
@@ -583,9 +813,12 @@ int Driver::MainLoop() {
       SBStream crash_commands_stream;
       WriteCommandsForSourcing(eCommandPlacementAfterCrash,
                                crash_commands_stream);
-      SBError error =
-          m_debugger.SetInputString(crash_commands_stream.GetData());
-      if (error.Success()) {
+      const char *crash_commands_data = crash_commands_stream.GetData();
+      const size_t crash_commands_size = crash_commands_stream.GetSize();
+      commands_file =
+          PrepareCommandsForSourcing(crash_commands_data, crash_commands_size);
+      if (commands_file != nullptr) {
+        m_debugger.SetInputFileHandle(commands_file, true);
         SBCommandInterpreterRunResult local_results =
             m_debugger.RunCommandInterpreter(options);
         if (local_results.GetResult() ==
@@ -600,7 +833,7 @@ int Driver::MainLoop() {
           return 1;
       }
     }
-    m_debugger.SetAsync(old_async);
+    //m_debugger.SetAsync(old_async);
   }
 
   // Now set the input file handle to STDIN and run the command interpreter
@@ -681,14 +914,6 @@ void sigcont_handler(int signo) {
   signal(signo, sigcont_handler);
 }
 
-void reproducer_handler(void *finalize_cmd) {
-  if (SBReproducer::Generate()) {
-    int result = std::system(static_cast<const char *>(finalize_cmd));
-    (void)result;
-    fflush(stdout);
-  }
-}
-
 static void printHelp(LLDBOptTable &table, llvm::StringRef tool_name) {
   std::string usage_str = tool_name.str() + " [options]";
   table.printHelp(llvm::outs(), usage_str.c_str(), "LLDB", false);
@@ -735,38 +960,6 @@ EXAMPLES:
   llvm::outs() << examples << '\n';
 }
 
-static llvm::Optional<int> InitializeReproducer(llvm::StringRef argv0,
-                                                opt::InputArgList &input_args) {
-  bool capture = input_args.hasArg(OPT_capture);
-  bool generate_on_exit = input_args.hasArg(OPT_generate_on_exit);
-  auto *capture_path = input_args.getLastArg(OPT_capture_path);
-
-  if (generate_on_exit && !capture) {
-    WithColor::warning()
-        << "-reproducer-generate-on-exit specified without -capture\n";
-  }
-
-  if (capture || capture_path) {
-    if (capture_path) {
-      if (!capture)
-        WithColor::warning() << "-capture-path specified without -capture\n";
-      if (const char *error = SBReproducer::Capture(capture_path->getValue())) {
-        WithColor::error() << "reproducer capture failed: " << error << '\n';
-        return 1;
-      }
-    } else {
-      const char *error = SBReproducer::Capture();
-      if (error) {
-        WithColor::error() << "reproducer capture failed: " << error << '\n';
-        return 1;
-      }
-    }
-    if (generate_on_exit)
-      SBReproducer::SetAutoGenerate(true);
-  }
-
-  return llvm::None;
-}
 
 int main(int argc, char const *argv[]) {
   // Editline uses for example iswprint which is dependent on LC_CTYPE.
@@ -809,10 +1002,6 @@ int main(int argc, char const *argv[]) {
     return 1;
   }
 
-  if (auto exit_code = InitializeReproducer(argv[0], input_args)) {
-    return *exit_code;
-  }
-
   SBError error = SBDebugger::InitializeWithErrorHandling();
   if (error.Fail()) {
     WithColor::error() << "initialization failed: " << error.GetCString()
@@ -849,3 +1038,4 @@ int main(int argc, char const *argv[]) {
   SBDebugger::Terminate();
   return exit_code;
 }
+#endif

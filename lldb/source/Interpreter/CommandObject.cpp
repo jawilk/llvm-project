@@ -974,6 +974,7 @@ Thread *CommandObject::GetDefaultThread() {
 
 bool CommandObjectParsed::Execute(const char *args_string,
                                   CommandReturnObject &result) {
+  llvm::errs() << "CommandObjectParsed::Execute\n";
   bool handled = false;
   Args cmd_args(args_string);
   if (HasOverrideCallback()) {
@@ -1006,6 +1007,7 @@ bool CommandObjectParsed::Execute(const char *args_string,
 
 bool CommandObjectRaw::Execute(const char *args_string,
                                CommandReturnObject &result) {
+  llvm::errs() << "CommandObjectRaw::Execute\n";
   bool handled = false;
   if (HasOverrideCallback()) {
     std::string full_command(GetCommandName());

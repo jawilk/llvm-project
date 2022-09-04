@@ -367,6 +367,7 @@ public:
 
 protected:
   bool DoExecute(Args &command, CommandReturnObject &result) override {
+    llvm::errs() << "THREAD DoExecute STEP\n";
     Process *process = m_exe_ctx.GetProcessPtr();
     bool synchronous_execution = m_interpreter.GetSynchronous();
 
@@ -436,6 +437,7 @@ protected:
     Status new_plan_status;
 
     if (m_step_type == eStepTypeInto) {
+llvm::errs() << "Thread DoExecute IS STEP INTO\n";
       StackFrame *frame = thread->GetStackFrameAtIndex(0).get();
       assert(frame != nullptr);
 
@@ -457,7 +459,7 @@ protected:
             result.AppendErrorWithFormat("Could not find the current block.");
             return false;
           }
-
+llvm::errs() << "MID Thread DoExecute IS STEP INTO\n";
           AddressRange block_range;
           Address pc_address = frame->GetFrameCodeAddress();
           block->GetRangeContainingAddress(pc_address, block_range);
@@ -482,7 +484,7 @@ protected:
             m_options.m_step_in_target.c_str(), stop_other_threads,
             new_plan_status, m_options.m_step_in_avoid_no_debug,
             m_options.m_step_out_avoid_no_debug);
-
+llvm::errs() << "After init new_plan_sp DoExecute IS STEP INTO\n";
         if (new_plan_sp && !m_options.m_avoid_regexp.empty()) {
           ThreadPlanStepInRange *step_in_range_plan =
               static_cast<ThreadPlanStepInRange *>(new_plan_sp.get());
@@ -528,7 +530,7 @@ protected:
     // If we got a new plan, then set it to be a controlling plan (User level
     // Plans should be controlling plans so that they can be interruptible).
     // Then resume the process.
-
+llvm::errs() << "Thread DoExecute BEFORE IS NEW THREAD PLAN\n";
     if (new_plan_sp) {
       new_plan_sp->SetIsControllingPlan(true);
       new_plan_sp->SetOkayToDiscard(false);
@@ -546,11 +548,14 @@ protected:
 
       StreamString stream;
       Status error;
-      if (synchronous_execution)
-        error = process->ResumeSynchronous(&stream);
-      else
+      if (synchronous_execution) {
+         llvm::errs() << "IS SYNCHRONOUS exec before Resume\n";
+         error = process->ResumeSynchronous(&stream);
+      }
+      else {
+         llvm::errs() << "NOT SYNCHRONOUS exec before Resume\n";
         error = process->Resume();
-
+}
       if (!error.Success()) {
         result.AppendMessage(error.AsCString());
         return false;

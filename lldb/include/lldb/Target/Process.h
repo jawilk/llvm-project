@@ -2988,6 +2988,8 @@ protected:
 
   void ResumePrivateStateThread();
 
+  lldb::thread_result_t RunPrivateStateThread(bool is_secondary_thread);
+
 private:
   struct PrivateStateThreadArgs {
     PrivateStateThreadArgs(Process *p, bool s)
@@ -3005,7 +3007,7 @@ private:
   // temporarily spin up a secondary state thread to handle events from a hand-
   // called function on the primary private state thread.
 
-  lldb::thread_result_t RunPrivateStateThread(bool is_secondary_thread);
+  //lldb::thread_result_t RunPrivateStateThread(lldb::EventSP event_sp);
 
 protected:
   void HandlePrivateEvent(lldb::EventSP &event_sp);

@@ -48,6 +48,7 @@ Status TargetList::CreateTarget(Debugger &debugger,
                                 LoadDependentFiles load_dependent_files,
                                 const OptionGroupPlatform *platform_options,
                                 TargetSP &target_sp) {
+  llvm::errs() << "TargetList::CreateTarget\n";
   std::lock_guard<std::recursive_mutex> guard(m_target_list_mutex);
   auto result = TargetList::CreateTargetInternal(
       debugger, user_exe_path, triple_str, load_dependent_files,
@@ -55,6 +56,7 @@ Status TargetList::CreateTarget(Debugger &debugger,
 
   if (target_sp && result.Success())
     AddTargetInternal(target_sp, /*do_select*/ true);
+  llvm::errs() << "END TargetList::CreateTarget\n";
   return result;
 }
 
@@ -77,6 +79,7 @@ Status TargetList::CreateTargetInternal(
     Debugger &debugger, llvm::StringRef user_exe_path,
     llvm::StringRef triple_str, LoadDependentFiles load_dependent_files,
     const OptionGroupPlatform *platform_options, TargetSP &target_sp) {
+  llvm::errs() << "TargetList::CreateTargetInternal\n";
   Status error;
 
   // Let's start by looking at the selected platform.
@@ -256,7 +259,7 @@ Status TargetList::CreateTargetInternal(
 
   // If we have a valid architecture, make sure the current platform is
   // compatible with that architecture.
-  if (!prefer_platform_arch && arch.IsValid()) {
+  /*if (!prefer_platform_arch && arch.IsValid()) {
     if (!platform_sp->IsCompatibleArchitecture(arch, false, nullptr)) {
       platform_sp = Platform::GetPlatformForArchitecture(arch, &platform_arch);
       if (platform_sp)
@@ -272,11 +275,13 @@ Status TargetList::CreateTargetInternal(
       if (platform_sp)
         debugger.GetPlatformList().SetSelectedPlatform(platform_sp);
     }
-  }
+  }*/
 
-  if (!platform_arch.IsValid())
+  if (!platform_arch.IsValid()) {
+    llvm::errs() << "!platform_arch.IsValid() TargetList::CreateTargetInternal\n";
     platform_arch = arch;
-
+  }
+  llvm::errs() << "END TargetList::CreateTargetInternal\n";
   return TargetList::CreateTargetInternal(debugger, user_exe_path,
                                           platform_arch, load_dependent_files,
                                           platform_sp, target_sp);
@@ -297,17 +302,20 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
   ArchSpec arch(specified_arch);
 
   if (arch.IsValid()) {
+  llvm::errs() << "arch.IsValid() TargetList::CreateTargetInternal2\n";
     if (!platform_sp ||
         !platform_sp->IsCompatibleArchitecture(arch, false, nullptr))
       platform_sp = Platform::GetPlatformForArchitecture(specified_arch, &arch);
   }
 
-  if (!platform_sp)
+  if (!platform_sp) {
+    llvm::errs() << "!platform_sp TargetList::CreateTargetInternal2\n";
     platform_sp = debugger.GetPlatformList().GetSelectedPlatform();
+}
 
   if (!arch.IsValid())
     arch = specified_arch;
-
+  llvm::errs() << "Arch: " << specified_arch.GetArchitectureName() << "\n";
   FileSpec file(user_exe_path);
   if (!FileSystem::Instance().Exists(file) && user_exe_path.startswith("~")) {
     // we want to expand the tilde but we don't want to resolve any symbolic
@@ -321,7 +329,7 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
     else
       file = FileSpec(unglobbed_path.c_str());
   }
-
+  llvm::errs() << "2TargetList::CreateTargetInternal2\n";
   bool user_exe_path_is_bundle = false;
   char resolved_bundle_exe_path[PATH_MAX];
   resolved_bundle_exe_path[0] = '\0';
@@ -338,7 +346,7 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
           file = cwd_file;
       }
     }
-
+  llvm::errs() << "3TargetList::CreateTargetInternal2\n";
     ModuleSP exe_module_sp;
     if (platform_sp) {
       FileSpecList executable_search_paths(
@@ -375,7 +383,7 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
     // valid arch was specified
     target_sp.reset(new Target(debugger, arch, platform_sp, is_dummy_target));
   }
-
+  llvm::errs() << "4TargetList::CreateTargetInternal2\n";
   if (!target_sp)
     return error;
 
@@ -400,7 +408,7 @@ Status TargetList::CreateTargetInternal(Debugger &debugger,
 
   // Now prime this from the dummy target:
   target_sp->PrimeFromDummyTarget(debugger.GetDummyTarget());
-
+  llvm::errs() << "END TargetList::CreateTargetInternal2\n";
   return error;
 }
 

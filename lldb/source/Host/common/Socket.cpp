@@ -6,6 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#endif
+
 #include "lldb/Host/Socket.h"
 
 #include "lldb/Host/Config.h"
@@ -216,6 +220,9 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
   Status error;
   int bytes_received = 0;
   do {
+    #if defined(__EMSCRIPTEN__)
+    emscripten_sleep(100);
+    #endif
     bytes_received = ::recv(m_socket, static_cast<char *>(buf), num_bytes, 0);
   } while (bytes_received < 0 && IsInterrupted());
 

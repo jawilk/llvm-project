@@ -1824,6 +1824,7 @@ lldb::ProcessSP Platform::ConnectProcess(llvm::StringRef connect_url,
 lldb::ProcessSP Platform::ConnectProcessSynchronous(
     llvm::StringRef connect_url, llvm::StringRef plugin_name,
     Debugger &debugger, Stream &stream, Target *target, Status &error) {
+  llvm::errs() << "Platform::ConnectProcessSynchronous\n";
   return DoConnectProcess(connect_url, plugin_name, debugger, &stream, target,
                           error);
 }
@@ -1832,6 +1833,7 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
                                            llvm::StringRef plugin_name,
                                            Debugger &debugger, Stream *stream,
                                            Target *target, Status &error) {
+  llvm::errs() << "Platform::DoConnectProcess\n";
   error.Clear();
 
   if (!target) {
@@ -1869,6 +1871,7 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
     process_sp->HijackProcessEvents(listener_sp);
 
   error = process_sp->ConnectRemote(connect_url);
+  llvm::errs() << "AFTER ConnectRemote Platform::DoConnectProcess\n";
   if (error.Fail()) {
     if (synchronous)
       process_sp->RestoreProcessEvents();
@@ -1884,7 +1887,7 @@ lldb::ProcessSP Platform::DoConnectProcess(llvm::StringRef connect_url,
     Process::HandleProcessStateChangedEvent(event_sp, stream,
                                             pop_process_io_handler);
   }
-
+  llvm::errs() << "END Platform::DoConnectProcess\n";
   return process_sp;
 }
 

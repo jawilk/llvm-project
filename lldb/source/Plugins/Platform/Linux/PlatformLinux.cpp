@@ -55,7 +55,7 @@ PlatformSP PlatformLinux::CreateInstance(bool force, const ArchSpec *arch) {
       create = true;
       break;
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
     // Only accept "unknown" for the OS if the host is linux and it "unknown"
     // wasn't specified (it was just returned because it was NOT specified)
     case llvm::Triple::OSType::UnknownOS:
@@ -84,7 +84,7 @@ void PlatformLinux::Initialize() {
   PlatformPOSIX::Initialize();
 
   if (g_initialize_count++ == 0) {
-#if defined(__linux__) && !defined(__ANDROID__)
+#if (defined(__linux__) || defined(__EMSCRIPTEN__)) && !defined(__ANDROID__)
     PlatformSP default_platform_sp(new PlatformLinux(true));
     default_platform_sp->SetSystemArchitecture(HostInfo::GetArchitecture());
     Platform::SetHostPlatform(default_platform_sp);
