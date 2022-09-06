@@ -6,6 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#endif
+
 #include "GDBRemoteCommunication.h"
 
 #include <climits>
@@ -93,12 +97,13 @@ char GDBRemoteCommunication::CalculcateChecksum(llvm::StringRef payload) {
 }
 
 size_t GDBRemoteCommunication::SendAck() {
-  Log *log = GetLog(GDBRLog::Packets);
+  llvm::errs() << "GDBRemoteCommunication::SendAck\n";
+  //Log *log = GetLog(GDBRLog::Packets);
   ConnectionStatus status = eConnectionStatusSuccess;
   char ch = '+';
   const size_t bytes_written = WriteAll(&ch, 1, status, nullptr);
-  LLDB_LOGF(log, "<%4" PRIu64 "> send packet: %c", (uint64_t)bytes_written, ch);
-  m_history.AddPacket(ch, GDBRemotePacket::ePacketTypeSend, bytes_written);
+  //LLDB_LOGF(log, "<%4" PRIu64 "> send packet: %c", (uint64_t)bytes_written, ch);
+  //m_history.AddPacket(ch, GDBRemotePacket::ePacketTypeSend, bytes_written);
   return bytes_written;
 }
 
@@ -128,12 +133,12 @@ GDBRemoteCommunication::PacketResult
 GDBRemoteCommunication::SendRawPacketNoLock(llvm::StringRef packet,
                                             bool skip_ack) {
   if (IsConnected()) {
-    Log *log = GetLog(GDBRLog::Packets);
+    //Log *log = GetLog(GDBRLog::Packets);
     ConnectionStatus status = eConnectionStatusSuccess;
     const char *packet_data = packet.data();
     const size_t packet_length = packet.size();
     size_t bytes_written = WriteAll(packet_data, packet_length, status, nullptr);
-    if (log) {
+    /*if (log) {
       size_t binary_start_offset = 0;
       if (strncmp(packet_data, "$vFile:pwrite:", strlen("$vFile:pwrite:")) ==
           0) {
@@ -168,20 +173,20 @@ GDBRemoteCommunication::SendRawPacketNoLock(llvm::StringRef packet,
       } else
         LLDB_LOGF(log, "<%4" PRIu64 "> send packet: %.*s",
                   (uint64_t)bytes_written, (int)packet_length, packet_data);
-    }
+    }*/
 
-    m_history.AddPacket(packet.str(), packet_length,
-                        GDBRemotePacket::ePacketTypeSend, bytes_written);
+    //m_history.AddPacket(packet.str(), packet_length,
+      //                  GDBRemotePacket::ePacketTypeSend, bytes_written);
 
     if (bytes_written == packet_length) {
       if (!skip_ack && GetSendAcks())
         return GetAck();
       else
         return PacketResult::Success;
-    } else {
+    }/* else {
       LLDB_LOGF(log, "error: failed to send packet: %.*s", (int)packet_length,
                 packet_data);
-    }
+    }*/
   }
   return PacketResult::ErrorSendFailed;
 }
@@ -222,7 +227,7 @@ GDBRemoteCommunication::ReadPacket(StringExtractorGDBRemote &response,
                                    bool sync_on_timeout) {
   using ResponseType = StringExtractorGDBRemote::ResponseType;
 
-  Log *log = GetLog(GDBRLog::Packets);
+  //Log *log = GetLog(GDBRLog::Packets);
   for (;;) {
     PacketResult result =
         WaitForPacketNoLock(response, timeout, sync_on_timeout);
@@ -230,7 +235,7 @@ GDBRemoteCommunication::ReadPacket(StringExtractorGDBRemote &response,
         (response.GetResponseType() != ResponseType::eAck &&
          response.GetResponseType() != ResponseType::eNack))
       return result;
-    LLDB_LOG(log, "discarding spurious `{0}` packet", response.GetStringRef());
+    //LLDB_LOG(log, "discarding spurious `{0}` packet", response.GetStringRef());
   }
 }
 
@@ -241,32 +246,37 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
   uint8_t buffer[8192];
   Status error;
 
-  Log *log = GetLog(GDBRLog::Packets);
+  //Log *log = GetLog(GDBRLog::Packets);
 
   // Check for a packet from our cache first without trying any reading...
   if (CheckForPacket(nullptr, 0, packet) != PacketType::Invalid)
     return PacketResult::Success;
 
-  bool timed_out = false;
-  bool disconnected = false;
-  while (IsConnected() && !timed_out) {
+  //bool timed_out = false;
+  //bool disconnected = false;
+  while (IsConnected()) {// && !timed_out) {
     lldb::ConnectionStatus status = eConnectionStatusNoConnection;
+    #if defined(__EMSCRIPTEN__)
+        emscripten_sleep(0);
+    #endif
     size_t bytes_read = Read(buffer, sizeof(buffer), timeout, status, &error);
 
-    LLDB_LOGV(log,
+    /*LLDB_LOGV(log,
               "Read(buffer, sizeof(buffer), timeout = {0}, "
               "status = {1}, error = {2}) => bytes_read = {3}",
               timeout, Communication::ConnectionStatusAsString(status), error,
-              bytes_read);
-
+              bytes_read);*/
     if (bytes_read > 0) {
       if (CheckForPacket(buffer, bytes_read, packet) != PacketType::Invalid)
         return PacketResult::Success;
-    } else {
+    }
+/* else {
       switch (status) {
       case eConnectionStatusTimedOut:
       case eConnectionStatusInterrupted:
+        llvm::errs() << "!! eConnectionStatusInterrupted\n";
         if (sync_on_timeout) {
+        llvm::errs() << "!! sync_on_timeout\n";
           /// Sync the remote GDB server and make sure we get a response that
           /// corresponds to what we send.
           ///
@@ -304,6 +314,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
             regex_str += "$";
             response_regex = RegularExpression(regex_str);
           } else {
+        llvm::errs() << "!! BEFORE send qC\n";
             echo_packet_len =
                 ::snprintf(echo_packet, sizeof(echo_packet), "qC");
             response_regex =
@@ -335,6 +346,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
               } else if (echo_packet_result == PacketResult::ErrorReplyTimeout)
                 continue; // Packet timed out, continue waiting for a response
               else
+                llvm::errs() << "DISCONNECTED\n";
                 break; // Something else went wrong getting the packet back, we
                        // failed and are done trying
             }
@@ -351,6 +363,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
               return PacketResult::Success;
             }
           } else {
+            llvm::errs() << "DISCONNECTED\n";
             disconnected = true;
             Disconnect();
           }
@@ -370,15 +383,17 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
         Disconnect();
         break;
       }
-    }
+    }*/
   }
   packet.Clear();
-  if (disconnected)
+  /*if (disconnected)
     return PacketResult::ErrorDisconnected;
-  if (timed_out)
+  if (timed_out) {
+    llvm::errs() << "!! timed_out\n";
     return PacketResult::ErrorReplyTimeout;
-  else
-    return PacketResult::ErrorReplyFailed;
+  }
+  else*/
+  return PacketResult::ErrorReplyFailed;
 }
 
 bool GDBRemoteCommunication::DecompressPacket() {
@@ -616,14 +631,14 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
   // Put the packet data into the buffer in a thread safe fashion
   std::lock_guard<std::recursive_mutex> guard(m_bytes_mutex);
 
-  Log *log = GetLog(GDBRLog::Packets);
+  //Log *log = GetLog(GDBRLog::Packets);
 
   if (src && src_len > 0) {
-    if (log && log->GetVerbose()) {
+    /*if (log && log->GetVerbose()) {
       StreamString s;
       LLDB_LOGF(log, "GDBRemoteCommunication::%s adding %u bytes: %.*s",
                 __FUNCTION__, (uint32_t)src_len, (uint32_t)src_len, src);
-    }
+    }*/
     m_bytes.append((const char *)src, src_len);
   }
 
@@ -639,7 +654,7 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
     size_t checksum_idx = std::string::npos;
 
     // Size of packet before it is decompressed, for logging purposes
-    size_t original_packet_size = m_bytes.size();
+    //size_t original_packet_size = m_bytes.size();
     if (CompressionIsEnabled()) {
       if (!DecompressPacket()) {
         packet.Clear();
@@ -703,8 +718,8 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
           break;
         }
       }
-      LLDB_LOGF(log, "GDBRemoteCommunication::%s tossing %u junk bytes: '%.*s'",
-                __FUNCTION__, idx - 1, idx - 1, m_bytes.c_str());
+      /*LLDB_LOGF(log, "GDBRemoteCommunication::%s tossing %u junk bytes: '%.*s'",
+                __FUNCTION__, idx - 1, idx - 1, m_bytes.c_str());*/
       m_bytes.erase(0, idx - 1);
     } break;
     }
@@ -721,7 +736,7 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
       size_t content_end = content_start + content_length;
 
       bool success = true;
-      if (log) {
+      /*if (log) {
         // If logging was just enabled and we have history, then dump out what
         // we have to the log so we get the historical context. The Dump() call
         // that logs all of the packet will set a boolean so that we don't dump
@@ -776,10 +791,10 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
                       (uint64_t)total_length, (int)(total_length),
                       m_bytes.c_str());
         }
-      }
+      }*/
 
-      m_history.AddPacket(m_bytes, total_length,
-                          GDBRemotePacket::ePacketTypeRecv, total_length);
+      /*m_history.AddPacket(m_bytes, total_length,
+                          GDBRemotePacket::ePacketTypeRecv, total_length);*/
 
       // Copy the packet from m_bytes to packet_str expanding the run-length
       // encoding in the process.
@@ -797,13 +812,13 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
             char actual_checksum = CalculcateChecksum(
                 llvm::StringRef(m_bytes).slice(content_start, content_end));
             success = packet_checksum == actual_checksum;
-            if (!success) {
+            /*if (!success) {
               LLDB_LOGF(log,
                         "error: checksum mismatch: %.*s expected 0x%2.2x, "
                         "got 0x%2.2x",
                         (int)(total_length), m_bytes.c_str(),
                         (uint8_t)packet_checksum, (uint8_t)actual_checksum);
-            }
+            }*/
             // Send the ack or nack if needed
             if (!success)
               SendNack();
@@ -812,8 +827,8 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
           }
         } else {
           success = false;
-          LLDB_LOGF(log, "error: invalid checksum in packet: '%s'\n",
-                    m_bytes.c_str());
+          /*LLDB_LOGF(log, "error: invalid checksum in packet: '%s'\n",
+                    m_bytes.c_str());*/
         }
       }
 

@@ -184,11 +184,12 @@ GDBRemoteClientBase::SendPacketAndWaitForResponse(
     std::chrono::seconds interrupt_timeout) {
   Lock lock(*this, interrupt_timeout);
   if (!lock) {
-    if (Log *log = GetLog(GDBRLog::Process))
+    /*if (Log *log = GetLog(GDBRLog::Process))
       LLDB_LOGF(log,
                 "GDBRemoteClientBase::%s failed to get mutex, not sending "
                 "packet '%.*s'",
-                __FUNCTION__, int(payload.size()), payload.data());
+                __FUNCTION__, int(payload.size()), payload.data());*/
+    llvm::errs() << "!!! NO LOCK SendPacketAndWaitForResponse\n";
     return PacketResult::ErrorSendFailed;
   }
 
@@ -235,14 +236,14 @@ GDBRemoteClientBase::SendPacketAndWaitForResponseNoLock(
     if (response.ValidateResponse())
       return packet_result;
     // Response says it wasn't valid
-    Log *log = GetLog(GDBRLog::Packets);
+    /*Log *log = GetLog(GDBRLog::Packets);
     LLDB_LOGF(
         log,
         "error: packet with payload \"%.*s\" got invalid response \"%s\": %s",
         int(payload.size()), payload.data(), response.GetStringRef().data(),
         (i == (max_response_retries - 1))
             ? "using invalid response and giving up"
-            : "ignoring response and waiting for another");
+            : "ignoring response and waiting for another");*/
   }
   return packet_result;
 }

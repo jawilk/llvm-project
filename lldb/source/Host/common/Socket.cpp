@@ -6,10 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if defined(__EMSCRIPTEN__)
-#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
-#endif
-
 #include "lldb/Host/Socket.h"
 
 #include "lldb/Host/Config.h"
@@ -64,13 +60,13 @@ typedef void *get_socket_option_arg_type;
 const NativeSocket Socket::kInvalidSocketValue = -1;
 #endif // #if defined(_WIN32)
 
-static bool IsInterrupted() {
+/*static bool IsInterrupted() {
 #if defined(_WIN32)
   return ::WSAGetLastError() == WSAEINTR;
 #else
   return errno == EINTR;
 #endif
-}
+}*/
 
 Socket::Socket(SocketProtocol protocol, bool should_close,
                bool child_processes_inherit)
@@ -219,12 +215,9 @@ IOObject::WaitableHandle Socket::GetWaitableHandle() {
 Status Socket::Read(void *buf, size_t &num_bytes) {
   Status error;
   int bytes_received = 0;
-  do {
-    #if defined(__EMSCRIPTEN__)
-    emscripten_sleep(100);
-    #endif
+  //do {
     bytes_received = ::recv(m_socket, static_cast<char *>(buf), num_bytes, 0);
-  } while (bytes_received < 0 && IsInterrupted());
+  //} while (bytes_received < 0);// && IsInterrupted());
 
   if (bytes_received < 0) {
     SetLastError(error);
@@ -232,7 +225,7 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
   } else
     num_bytes = bytes_received;
 
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
+  /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
   if (log) {
     LLDB_LOGF(log,
               "%p Socket::Read() (socket = %" PRIu64
@@ -241,18 +234,17 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
               static_cast<void *>(this), static_cast<uint64_t>(m_socket), buf,
               static_cast<uint64_t>(num_bytes),
               static_cast<int64_t>(bytes_received), error.AsCString());
-  }
-
+  }*/
   return error;
 }
 
 Status Socket::Write(const void *buf, size_t &num_bytes) {
-  const size_t src_len = num_bytes;
+  //const size_t src_len = num_bytes;
   Status error;
   int bytes_sent = 0;
-  do {
+  //do {
     bytes_sent = Send(buf, num_bytes);
-  } while (bytes_sent < 0 && IsInterrupted());
+  //} while (bytes_sent < 0);// && IsInterrupted());
 
   if (bytes_sent < 0) {
     SetLastError(error);
@@ -260,7 +252,7 @@ Status Socket::Write(const void *buf, size_t &num_bytes) {
   } else
     num_bytes = bytes_sent;
 
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
+  /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
   if (log) {
     LLDB_LOGF(log,
               "%p Socket::Write() (socket = %" PRIu64
@@ -269,8 +261,7 @@ Status Socket::Write(const void *buf, size_t &num_bytes) {
               static_cast<void *>(this), static_cast<uint64_t>(m_socket), buf,
               static_cast<uint64_t>(src_len),
               static_cast<int64_t>(bytes_sent), error.AsCString());
-  }
-
+  }*/
   return error;
 }
 

@@ -6,6 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <fcntl.h>
+#include <arpa/inet.h>
+
 #if defined(_MSC_VER)
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #endif
@@ -137,29 +140,69 @@ std::string TCPSocket::GetRemoteConnectionURI() const {
 
 Status TCPSocket::CreateSocket(int domain) {
   Status error;
-  if (IsValid())
+  /*if (IsValid())
     error = Close();
   if (error.Fail())
     return error;
   m_socket = Socket::CreateSocket(domain, kType, IPPROTO_TCP,
-                                  m_child_processes_inherit, error);
+                                  m_child_processes_inherit, error);*/
+
+  m_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (m_socket == -1) {
+    perror("cannot create socket");
+    //finish(EXIT_FAILURE);
+    error.SetErrorToGenericError();
+  }
+  fcntl(m_socket, F_SETFL, O_NONBLOCK);
+
   return error;
 }
 
 Status TCPSocket::Connect(llvm::StringRef name) {
-
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_COMMUNICATION));
-  LLDB_LOGF(log, "TCPSocket::%s (host/port = %s)", __FUNCTION__, name.data());
+  llvm::errs() << "-- TCPSocket::Connect\n";
 
   Status error;
   llvm::Expected<HostAndPort> host_port = DecodeHostAndPort(name);
   if (!host_port)
     return Status(host_port.takeError());
 
-  std::vector<SocketAddress> addresses =
+  llvm::errs() << "HOST: " << host_port->hostname << " PORT: " << host_port->port << "\n";
+  llvm::errs() << "to c str: " << host_port->hostname.c_str() << "\n";
+  /*std::vector<SocketAddress> addresses =
       SocketAddress::GetAddressInfo(host_port->hostname.c_str(), nullptr,
-                                    AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP);
-  for (SocketAddress &address : addresses) {
+                                    AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP);*/
+  // TCP Emscripten socket
+  CreateSocket(0);
+  struct sockaddr_in addr;
+  int res;
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(host_port->port);
+  // TODO: only for testing convenience, remove later
+  if (host_port->hostname == "localhost") {
+    if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+      perror("inet_pton failed");
+      error.SetErrorToGenericError();
+      //finish(EXIT_FAILURE);
+      return error;
+    }
+  } else {  
+    if (inet_pton(AF_INET, host_port->hostname.c_str(), &addr.sin_addr) != 1) {
+      perror("inet_pton failed");
+      error.SetErrorToGenericError();
+      //finish(EXIT_FAILURE);
+      return error;
+    }
+  }
+
+  res = connect(m_socket, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
+    perror("connect failed");
+    error.SetErrorToGenericError();
+    return error;
+    //finish(EXIT_FAILURE);
+  }
+
+  /*for (SocketAddress &address : addresses) {
     error = CreateSocket(address.GetFamily());
     if (error.Fail())
       continue;
@@ -171,16 +214,16 @@ Status TCPSocket::Connect(llvm::StringRef name) {
                                           address.GetLength())) {
       CLOSE_SOCKET(GetNativeSocket());
       continue;
-    }
+    }*/
 
-    SetOptionNoDelay();
-
+    //SetOptionNoDelay();
+    llvm::errs() << "-- END TCPSocket::Connect\n";
     error.Clear();
     return error;
-  }
+  /*}
 
   error.SetErrorString("Failed to connect port");
-  return error;
+  return error;*/
 }
 
 Status TCPSocket::Listen(llvm::StringRef name, int backlog) {

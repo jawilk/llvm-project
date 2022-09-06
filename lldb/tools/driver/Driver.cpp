@@ -52,10 +52,10 @@ public:
 
 // Emscripten globals
 //int SOCKET_FD_EMSCRIPTEN;
-static SBDebugger debugger;
-static LLDBSentry sentry;
+SBDebugger debugger;
+LLDBSentry sentry;
 char registers_ret[256];
-char arguments_ret[256];
+char arguments_ret[1024];
 
 /*void finish(int result) {
   if (SOCKET_FD_EMSCRIPTEN) {
@@ -65,10 +65,10 @@ char arguments_ret[256];
   //emscripten_cancel_main_loop();
 }*/
 
-int main(int argc, char const *argv[]) {
+int main() {
     std::cout << "LLDB - INIT main() c++\n";
 
-    debugger = SBDebugger::Create(false);
+    debugger = SBDebugger::Create();
     if (!debugger.IsValid())
         fprintf(stderr, "error: failed to create a debugger object\n");
     debugger.SetAsync(false);
@@ -108,30 +108,22 @@ int main(int argc, char const *argv[]) {
 // API
 // EMSCRIPTEN_KEEPALIVE will add to EXPORTED_FUNCTIONS automatically
 extern "C" {
-    EMSCRIPTEN_KEEPALIVE char* execute_command(char* input) {
-        std::cout << "LLDB - execute_command: " << input << "\n";
+    EMSCRIPTEN_KEEPALIVE void execute_command(const char* input) {
+        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-        char command[1024];
-        SBCommandReturnObject command_result;
-
-        snprintf(command, sizeof(command), input);
-        debugger.GetCommandInterpreter().HandleCommand(command,
-                                                      command_result);
-        char* ret_val = const_cast<char*>(command_result.GetOutput());
-        std::cout << "lldb reply: " << ret_val << "\n";
-        return ret_val;
+        debugger.HandleCommand(input);
     }
 }
 
 extern "C" {
-    EMSCRIPTEN_KEEPALIVE void create_target(const char* exe_file_path) {
-        std::cout << "LLDB - create_target: " << exe_file_path << "\n";
-	const char *arch = NULL;
+    EMSCRIPTEN_KEEPALIVE void create_target(const char* path) {
+        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+
+        SBError error;
+        const char *arch = NULL;
         const char *platform = NULL;
         const bool add_dependent_libs = false;
-        SBError error;
-        debugger.CreateTarget(exe_file_path, arch, platform,
-                                            add_dependent_libs, error);
+        debugger.CreateTarget(path, arch, platform, add_dependent_libs, error);
     }
 }
 
@@ -166,18 +158,18 @@ extern "C" {
     }
 }*/
 
-/*extern "C" {
-    EMSCRIPTEN_KEEPALIVE char* get_func_arguments() {
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE char* get_func_args() {
         std::cout << "LLDB - get_func_arguments()\n";
 
     lldb::SBValueList arguments = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(true, false, false, true);
 
-        char* arguments_value_str = "";
+        std::string arguments_value_str;
 
-        size_t len = arguments.GetSize();
+        int len = arguments.GetSize();
         // Format: len;name=value;...;
         for (int i=0; i<len; i++) {
-            arguments_value_str.append(len);
+            arguments_value_str.append(std::to_string(len));
             arguments_value_str.append(";"); arguments_value_str.append(arguments.GetValueAtIndex(0).GetName());
             arguments_value_str.append("=");          arguments_value_str.append(arguments.GetValueAtIndex(0).GetValue());
             arguments_value_str.append(";");
@@ -185,10 +177,32 @@ extern "C" {
         strcpy(arguments_ret, arguments_value_str.c_str());
         return arguments_ret;
     }
-}*/
+}
+
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE char* get_stack_trace() {
+        std::cout << "LLDB - get_func_arguments()\n";
+
+    lldb::SBFrame arguments = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame();
+
+        std::string arguments_value_str;
+
+        int len = arguments.GetSize();
+        // Format: len;name=value;...;
+        for (int i=0; i<len; i++) {
+            arguments_value_str.append(std::to_string(len));
+            arguments_value_str.append(";"); arguments_value_str.append(arguments.GetValueAtIndex(0).GetName());
+            arguments_value_str.append("=");          arguments_value_str.append(arguments.GetValueAtIndex(0).GetValue());
+            arguments_value_str.append(";");
+        }
+        strcpy(arguments_ret, arguments_value_str.c_str());
+        return arguments_ret;
+    }
+}
 
 
 #else // ---------------------------------------------------------------------------------
+
 
 #include "Driver.h"
 

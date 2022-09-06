@@ -560,12 +560,12 @@ llvm::errs() << "Thread DoExecute BEFORE IS NEW THREAD PLAN\n";
         result.AppendMessage(error.AsCString());
         return false;
       }
-
+         llvm::errs() << "AFTER Resume SYNCHRONOUS THREAD command obj\n";
       // There is a race condition where this thread will return up the call
       // stack to the main command handler and show an (lldb) prompt before
       // HandlePrivateEvent (from PrivateStateThread) has a chance to call
       // PushProcessIOHandler().
-      process->SyncIOHandler(iohandler_id, std::chrono::seconds(2));
+      //process->SyncIOHandler(iohandler_id, std::chrono::seconds(2));
 
       if (synchronous_execution) {
         // If any state changed events had anything to say, add that to the
@@ -582,6 +582,7 @@ llvm::errs() << "Thread DoExecute BEFORE IS NEW THREAD PLAN\n";
     } else {
       result.SetError(new_plan_status);
     }
+  llvm::errs() << "END THREAD DoExecute STEP\n";
     return result.Succeeded();
   }
 

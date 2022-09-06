@@ -6,6 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#endif
+
 #include "lldb/Core/Communication.h"
 
 #include "lldb/Host/HostThread.h"
@@ -125,16 +129,16 @@ bool Communication::HasConnection() const {
 size_t Communication::Read(void *dst, size_t dst_len,
                            const Timeout<std::micro> &timeout,
                            ConnectionStatus &status, Status *error_ptr) {
-  Log *log = GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION);
+  /*Log *log = GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION);
   LLDB_LOG(
       log,
       "this = {0}, dst = {1}, dst_len = {2}, timeout = {3}, connection = {4}",
-      this, dst, dst_len, timeout, m_connection_sp.get());
+      this, dst, dst_len, timeout, m_connection_sp.get());*/
 
   if (m_read_thread_enabled) {
     // We have a dedicated read thread that is getting data for us
     size_t cached_bytes = GetCachedBytes(dst, dst_len);
-    if (cached_bytes > 0 || (timeout && timeout->count() == 0)) {
+    if (cached_bytes > 0) {// || (timeout && timeout->count() == 0)) {
       status = eConnectionStatusSuccess;
       return cached_bytes;
     }
@@ -172,16 +176,19 @@ size_t Communication::Read(void *dst, size_t dst_len,
 
 size_t Communication::Write(const void *src, size_t src_len,
                             ConnectionStatus &status, Status *error_ptr) {
+  llvm::errs() << "Communication::Write src_len: " << src_len << "\n";
   lldb::ConnectionSP connection_sp(m_connection_sp);
 
   std::lock_guard<std::mutex> guard(m_write_mutex);
-  LLDB_LOG(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION),
+  /*LLDB_LOG(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION),
            "{0} Communication::Write (src = {1}, src_len = {2}"
            ") connection = {3}",
-           this, src, (uint64_t)src_len, connection_sp.get());
+           this, src, (uint64_t)src_len, connection_sp.get());*/
 
-  if (connection_sp)
+  if (connection_sp) {
+    llvm::errs() << "IS connection_sp Communication::Write\n";
     return connection_sp->Write(src, src_len, status, error_ptr);
+  }
 
   if (error_ptr)
     error_ptr->SetErrorString("Invalid connection.");
@@ -191,11 +198,21 @@ size_t Communication::Write(const void *src, size_t src_len,
 
 size_t Communication::WriteAll(const void *src, size_t src_len,
                                ConnectionStatus &status, Status *error_ptr) {
+  llvm::errs() << "Communication::WriteAll --- Send packet: ";
+  for (size_t i=0; i<src_len; i++)
+      llvm::errs() << static_cast<const char *>(src)[i];
+  llvm::errs() << "\n";
   size_t total_written = 0;
-  do
+  do {
+    #if defined(__EMSCRIPTEN__)
+      emscripten_sleep(0);
+      llvm::errs() << "SLEEEEEP WriteAll\n";
+    #endif
     total_written += Write(static_cast<const char *>(src) + total_written,
                            src_len - total_written, status, error_ptr);
-  while (status == eConnectionStatusSuccess && total_written < src_len);
+    llvm::errs() << "total_written: " << total_written << "\n";
+  //} while (status == eConnectionStatusSuccess && total_written < src_len);
+  } while (total_written < src_len);
   return total_written;
 }
 

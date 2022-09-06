@@ -250,14 +250,14 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
                                       const Timeout<std::micro> &timeout,
                                       ConnectionStatus &status,
                                       Status *error_ptr) {
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
+  //Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
 
   std::unique_lock<std::recursive_mutex> locker(m_mutex, std::defer_lock);
   if (!locker.try_lock()) {
-    LLDB_LOGF(log,
+    /*LLDB_LOGF(log,
               "%p ConnectionFileDescriptor::Read () failed to get the "
               "connection lock.",
-              static_cast<void *>(this));
+              static_cast<void *>(this));*/
     if (error_ptr)
       error_ptr->SetErrorString("failed to get the connection lock for read.");
 
@@ -272,15 +272,15 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
     return 0;
   }
 
-  status = BytesAvailable(timeout, error_ptr);
+  /*status = BytesAvailable(timeout, error_ptr);
   if (status != eConnectionStatusSuccess)
-    return 0;
+    return 0;*/
 
   Status error;
   size_t bytes_read = dst_len;
   error = m_io_sp->Read(dst, bytes_read);
 
-  if (log) {
+  /*if (log) {
     LLDB_LOGF(log,
               "%p ConnectionFileDescriptor::Read()  fd = %" PRIu64
               ", dst = %p, dst_len = %" PRIu64 ") => %" PRIu64 ", error = %s",
@@ -288,13 +288,13 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
               static_cast<uint64_t>(m_io_sp->GetWaitableHandle()),
               static_cast<void *>(dst), static_cast<uint64_t>(dst_len),
               static_cast<uint64_t>(bytes_read), error.AsCString());
-  }
+  }*/
 
-  if (bytes_read == 0) {
+  /*if (bytes_read == 0) {
     error.Clear(); // End-of-file.  Do not automatically close; pass along for
                    // the end-of-file handlers.
     status = eConnectionStatusEndOfFile;
-  }
+  }*/
 
   if (error_ptr)
     *error_ptr = error;
@@ -344,8 +344,8 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
       return 0;
 
     default:
-      LLDB_LOG(log, "this = {0}, unexpected error: {1}", this,
-               llvm::sys::StrError(error_value));
+      /*LLDB_LOG(log, "this = {0}, unexpected error: {1}", this,
+               llvm::sys::StrError(error_value));*/
       status = eConnectionStatusError;
       break; // Break to close....
     }
@@ -358,12 +358,12 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
 size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
                                        ConnectionStatus &status,
                                        Status *error_ptr) {
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
+  /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_CONNECTION));
   LLDB_LOGF(log,
             "%p ConnectionFileDescriptor::Write (src = %p, src_len = %" PRIu64
             ")",
             static_cast<void *>(this), static_cast<const void *>(src),
-            static_cast<uint64_t>(src_len));
+            static_cast<uint64_t>(src_len));*/
 
   if (!IsConnected()) {
     if (error_ptr)
@@ -383,8 +383,8 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
 
   size_t bytes_sent = src_len;
   error = m_io_sp->Write(src, bytes_sent);
-
-  if (log) {
+  llvm::errs() << "ConnectionFileDescriptor::Write bytes_sent: " << bytes_sent << "\n";
+  /*if (log) {
     LLDB_LOGF(log,
               "%p ConnectionFileDescriptor::Write(fd = %" PRIu64
               ", src = %p, src_len = %" PRIu64 ") => %" PRIu64 " (error = %s)",
@@ -392,7 +392,7 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
               static_cast<uint64_t>(m_io_sp->GetWaitableHandle()),
               static_cast<const void *>(src), static_cast<uint64_t>(src_len),
               static_cast<uint64_t>(bytes_sent), error.AsCString());
-  }
+  }*/
 
   if (error_ptr)
     *error_ptr = error;
@@ -417,7 +417,7 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
 
     return 0;
   }
-
+  llvm::errs() << "END ConnectionFileDescriptor::Write\n";
   status = eConnectionStatusSuccess;
   return bytes_sent;
 }

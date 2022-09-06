@@ -1076,7 +1076,9 @@ bool Process::SetExitStatus(int status, const char *cstr) {
   m_mod_id.SetStopEventForLastNaturalStopID(EventSP());
 
   SetPrivateState(eStateExited);
-
+  // Call PrivateStateThread
+  RunPrivateStateThread(false);
+  
   // Allow subclasses to do some cleanup
   DidExit();
 
@@ -1375,8 +1377,10 @@ Status Process::ResumeSynchronous(Stream *stream) {
 
   Status error = PrivateResume();
   if (error.Success()) {
+    llvm::errs() << "RESUME success Process::ResumeSynchronous\n";
     StateType state = WaitForProcessToStop(llvm::None, nullptr, true,
                                            listener_sp, stream);
+    llvm::errs() << "After WaitForProcessToStop Process::ResumeSynchronous\n";
     const bool must_be_alive =
         false; // eStateExited is ok, so this must be false
     if (!StateIsStoppedState(state, must_be_alive))
@@ -1384,13 +1388,15 @@ Status Process::ResumeSynchronous(Stream *stream) {
           "process not in stopped state after synchronous resume: %s",
           StateAsCString(state));
   } else {
+    llvm::errs() << "RESUME NO success Process::ResumeSynchronous\n";
     // Undo running state change
     m_public_run_lock.SetStopped();
   }
 
   // Undo the hijacking of process events...
   RestoreProcessEvents();
-
+  llvm::errs() << "END     4   Process::ResumeSynchronous\n";
+  llvm::errs() << "Error: " << error.AsCString() << "\n";
   return error;
 }
 
@@ -2860,8 +2866,9 @@ void Process::CompleteAttach() {
   // before we go looking for a dynamic loader plug-in.
   ArchSpec process_arch;
   DidAttach(process_arch);
-
+  llvm::errs() << "AFTER DidAttach Process::CompleteAttach\n";
   if (process_arch.IsValid()) {
+  llvm::errs() << "process_arch IsValid() Process::CompleteAttach\n";
     GetTarget().SetArchitecture(process_arch);
     if (log) {
       const char *triple_str = process_arch.GetTriple().getTriple().c_str();
@@ -2878,13 +2885,16 @@ void Process::CompleteAttach() {
   PlatformSP platform_sp(GetTarget().GetPlatform());
   assert(platform_sp);
   if (platform_sp) {
+  llvm::errs() << "IS platform_sp Process::CompleteAttach\n";
     const ArchSpec &target_arch = GetTarget().GetArchitecture();
     if (target_arch.IsValid() &&
         !platform_sp->IsCompatibleArchitecture(target_arch, false, nullptr)) {
+  llvm::errs() << "target_arch isValid and not IsCompatibleArchitecture Process::CompleteAttach\n";
       ArchSpec platform_arch;
       platform_sp =
           platform_sp->GetPlatformForArchitecture(target_arch, &platform_arch);
       if (platform_sp) {
+  llvm::errs() << "IS platform_sp2 Process::CompleteAttach\n";
         GetTarget().SetPlatform(platform_sp);
         GetTarget().SetArchitecture(platform_arch);
         LLDB_LOGF(log,
@@ -2894,6 +2904,7 @@ void Process::CompleteAttach() {
                   platform_arch.GetTriple().getTriple().c_str());
       }
     } else if (!process_arch.IsValid()) {
+  llvm::errs() << "ELSE platform_sp2 Process::CompleteAttach\n";
       ProcessInstanceInfo process_info;
       GetProcessInfo(process_info);
       const ArchSpec &process_arch = process_info.GetArchitecture();
@@ -2901,6 +2912,7 @@ void Process::CompleteAttach() {
       if (process_arch.IsValid() &&
           target_arch.IsCompatibleMatch(process_arch) &&
           !target_arch.IsExactMatch(process_arch)) {
+  llvm::errs() << "ELSE IsValid platform_sp2 Process::CompleteAttach\n";
         GetTarget().SetArchitecture(process_arch);
         LLDB_LOGF(log,
                   "Process::%s switching architecture to %s based on info "
@@ -2910,7 +2922,7 @@ void Process::CompleteAttach() {
       }
     }
   }
-
+  llvm::errs() << "Finished attach Process::CompleteAttach\n";
   // We have completed the attach, now it is time to find the dynamic loader
   // plug-in
   DynamicLoader *dyld = GetDynamicLoader();
@@ -3041,6 +3053,7 @@ Status Process::PrivateResume() {
     // signal in lldb::Thread::GetResumeSignal() to see if they are supposed to
     // start back up with a signal.
     if (m_thread_list.WillResume()) {
+  llvm::errs() << "m_thread_list.WillResume() Process::PrivateResume\n";
       // Last thing, do the PreResumeActions.
       if (!RunPreResumeActions()) {
         error.SetErrorString(
@@ -3058,6 +3071,7 @@ Status Process::PrivateResume() {
         }
       }
     } else {
+  llvm::errs() << "Somebody wanted to run without running Process::PrivateResume\n";
       // Somebody wanted to run without running (e.g. we were faking a step
       // from one frame of a set of inlined frames that share the same PC to
       // another.)  So generate a continue & a stopped event, and let the world
@@ -3066,11 +3080,14 @@ Status Process::PrivateResume() {
                 "Process::PrivateResume() asked to simulate a start & stop.");
 
       SetPrivateState(eStateRunning);
+      RunPrivateStateThread(false);
       SetPrivateState(eStateStopped);
+      RunPrivateStateThread(false);
     }
   } else
     LLDB_LOGF(log, "Process::PrivateResume() got an error \"%s\".",
               error.AsCString("<unknown error>"));
+  llvm::errs() << "END Process::PrivateResume\n";
   return error;
 }
 

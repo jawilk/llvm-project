@@ -962,6 +962,7 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
 }
 
 void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
+  llvm::errs() << "ProcessGDBRemote::DidLaunchOrAttach\n";
   Log *log = GetLog(GDBRLog::Process);
   BuildDynamicRegisterInfo(false);
 
@@ -1046,6 +1047,7 @@ void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
   }
 
   MaybeLoadExecutableModule();
+  llvm::errs() << "AFTER MaybeLoadExecutableModule DidLaunchOrAttach\n";
 
   // Find out which StructuredDataPlugins are supported by the debug monitor.
   // These plugins transmit data over async $J packets.
@@ -1056,8 +1058,10 @@ void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
   // If connected to LLDB ("native-signals+"), use signal defs for
   // the remote platform.  If connected to GDB, just use the standard set.
   if (!m_gdb_comm.UsesNativeSignals()) {
+  llvm::errs() << "is NOT UsesNativeSignals DidLaunchOrAttach\n";
     SetUnixSignals(std::make_shared<GDBRemoteSignals>());
   } else {
+  llvm::errs() << "is UsesNativeSignals DidLaunchOrAttach\n";
     PlatformSP platform_sp = GetTarget().GetPlatform();
     if (platform_sp && platform_sp->IsConnected())
       SetUnixSignals(platform_sp->GetUnixSignals());
@@ -1067,6 +1071,7 @@ void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
 }
 
 void ProcessGDBRemote::MaybeLoadExecutableModule() {
+  llvm::errs() << "ProcessGDBRemote::MaybeLoadExecutableModule\n";
   ModuleSP module_sp = GetTarget().GetExecutableModule();
   if (!module_sp)
     return;
@@ -1074,7 +1079,7 @@ void ProcessGDBRemote::MaybeLoadExecutableModule() {
   llvm::Optional<QOffsets> offsets = m_gdb_comm.GetQOffsets();
   if (!offsets)
     return;
-
+  llvm::errs() << "1ProcessGDBRemote::MaybeLoadExecutableModule\n";
   bool is_uniform =
       size_t(llvm::count(offsets->offsets, offsets->offsets[0])) ==
       offsets->offsets.size();
@@ -1085,6 +1090,7 @@ void ProcessGDBRemote::MaybeLoadExecutableModule() {
   module_sp->SetLoadAddress(GetTarget(), offsets->offsets[0],
                             /*value_is_offset=*/true, changed);
   if (changed) {
+  llvm::errs() << "changed ProcessGDBRemote::MaybeLoadExecutableModule\n";
     ModuleList list;
     list.Append(module_sp);
     m_process->GetTarget().ModulesDidLoad(list);
@@ -1190,6 +1196,7 @@ void ProcessGDBRemote::DidExit() {
 }
 
 void ProcessGDBRemote::DidAttach(ArchSpec &process_arch) {
+llvm::errs() << "ProcessGDBRemote::DidAttach\n";
   // If you can figure out what the architecture is, fill it in here.
   process_arch.Clear();
   DidLaunchOrAttach(process_arch);
@@ -1413,7 +1420,7 @@ Status ProcessGDBRemote::DoResume() {
       }*/
     }
   //} // if (listener_sp->...
-
+  llvm::errs() << "END ProcessGDBRemote::DoResume\n";
   return error;
 }
 
@@ -3687,6 +3694,8 @@ thread_result_t ProcessGDBRemote::AsyncThread(void *arg) {
 
 		      default:
 		        process->SetPrivateState(stop_state);
+			// Call PrivateStateThread
+		        process->RunPrivateStateThread(false);
 		        break;
 		      } // switch(stop_state)
 		  }     // if (continue_packet)
