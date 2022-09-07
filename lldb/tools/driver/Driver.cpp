@@ -34,6 +34,7 @@
 
 #define SOCKK 9007
 #define MAX_REGS 13
+#define PATH_LEN 128
 
 using namespace lldb;
 using namespace std;
@@ -55,7 +56,9 @@ public:
 SBDebugger debugger;
 LLDBSentry sentry;
 char registers_ret[256];
+char locals_ret[1024];
 char arguments_ret[1024];
+char stack_trace_ret[512];
 
 /*void finish(int result) {
   if (SOCKET_FD_EMSCRIPTEN) {
@@ -73,36 +76,7 @@ int main() {
         fprintf(stderr, "error: failed to create a debugger object\n");
     debugger.SetAsync(false);
     
-  // TCP
-  /*struct sockaddr_in addr;
-  int res;
-
-  SOCKET_FD_EMSCRIPTEN = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-  llvm::errs() << "SOCKET_FD_EMSCRIPTEN: " << SOCKET_FD_EMSCRIPTEN << "\n";
-  if (SOCKET_FD_EMSCRIPTEN == -1) {
-    perror("cannot create socket");
-    finish(EXIT_FAILURE);
-  }
-  fcntl(SOCKET_FD_EMSCRIPTEN, F_SETFL, O_NONBLOCK);
-
-  // connect the socket
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(SOCKK);
-  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
-    perror("inet_pton failed");
-    finish(EXIT_FAILURE);
-  }
-
-  res = connect(SOCKET_FD_EMSCRIPTEN, (struct sockaddr *)&addr, sizeof(addr));
-  if (res == -1 && errno != EINPROGRESS) {
-    perror("connect failed");
-    finish(EXIT_FAILURE);
-  }
-
-  //emscripten_set_main_loop(main_loop, 60, 0);*/
-  
-  return 0;
+    return 0;
 }
 
 // API
@@ -144,19 +118,36 @@ extern "C" {
     }
 }
 
-/*extern "C" {
-    EMSCRIPTEN_KEEPALIVE char* get_variables() {
-        std::cout << "LLDB - get_variables()\n";
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE char* get_locals() {
+	std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-        char* registers_value_str = "";
+	lldb::SBValueList local_vars;
+	int len;
+	std::string locals_value_str;
+	bool arguments = false;
+	bool locals = true;
+	bool statics = false;
+	bool in_scope_only = true;
 
-        lldb::SBValueList registers = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetRegisters();
-        for (int i=0; i<MAX_REGS; i++)
-    cout << "1st value: " << regs.GetValueAtIndex(0).GetChildAtIndex(i).GetValueAsUnsigned() << "\n"; 
+	local_vars = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(arguments, locals, statics, in_scope_only);
+	len = local_vars.GetSize();
 
-        return registers_value_str;
+	// Format: len;name=value;...;
+	for (int i=0; i<len; i++) {
+	    locals_value_str.append(std::to_string(len));
+	    locals_value_str.append(";");
+	    locals_value_str.append(local_vars.GetValueAtIndex(0).GetName());
+	    locals_value_str.append("=");
+	    locals_value_str.append(local_vars.GetValueAtIndex(0).GetValue());
+	    locals_value_str.append(";");
+	}
+	strcpy(locals_ret, locals_value_str.c_str());
+
+	return locals_ret;
     }
-}*/
+}
+
 
 extern "C" {
     EMSCRIPTEN_KEEPALIVE char* get_func_args() {
@@ -179,24 +170,56 @@ extern "C" {
     }
 }
 
+// Helper
+char* split(char* str, const char* sub_str) {
+    char* ret = strstr(str, sub_str);
+    if (ret == NULL)
+        return NULL;
+    return ret + strlen(sub_str);
+}
+
+// Because the elf file was build with `-Z remap-cwd-prefix=home/`
+const char* solana_sdk = "home/home";
+const char* rust_core = "rust/library";
+const string solana_sdk_vscode = "vscode-test-web:///sdk/program";
+const string rust_core_vscode = "vscode-test-web:///rust-solana-1.59.0/library";
 extern "C" {
     EMSCRIPTEN_KEEPALIVE char* get_stack_trace() {
-        std::cout << "LLDB - get_func_arguments()\n";
+        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-    lldb::SBFrame arguments = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame();
+        lldb::SBFrame frame;
+	uint32_t line;
+	const char* func_name;
+	string file_path;
+	char path[PATH_LEN];
+	int path_len_ret;
+	const char* split_path;
+	std::string stack_trace_str;
 
-        std::string arguments_value_str;
+	frame = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame();
 
-        int len = arguments.GetSize();
-        // Format: len;name=value;...;
-        for (int i=0; i<len; i++) {
-            arguments_value_str.append(std::to_string(len));
-            arguments_value_str.append(";"); arguments_value_str.append(arguments.GetValueAtIndex(0).GetName());
-            arguments_value_str.append("=");          arguments_value_str.append(arguments.GetValueAtIndex(0).GetValue());
-            arguments_value_str.append(";");
-        }
-        strcpy(arguments_ret, arguments_value_str.c_str());
-        return arguments_ret;
+	line = frame.GetLineEntry().GetLine(); 
+	func_name = frame.GetFunctionName();
+
+	path_len_ret = frame.GetLineEntry().GetFileSpec().GetPath(path, PATH_LEN);
+
+	if ((split_path = split(path, solana_sdk)) != NULL)
+	    file_path.append(solana_sdk_vscode);
+	else if ((split_path = split(path, rust_core)) != NULL)
+	    file_path.append(rust_core_vscode);
+
+	file_path.append(split_path);
+
+	// Format: line_num;func_name;file_path
+	stack_trace_str.append(to_string(line));
+	stack_trace_str.append(";");
+	stack_trace_str.append(func_name);
+	stack_trace_str.append(";");
+	stack_trace_str.append(file_path);
+
+	strcpy(stack_trace_ret, stack_trace_str.c_str());
+
+	return stack_trace_ret;
     }
 }
 
