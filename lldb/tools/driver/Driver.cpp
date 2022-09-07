@@ -39,6 +39,19 @@
 using namespace lldb;
 using namespace std;
 
+
+// API calls, these will return values (if any) to the typescript vscode-solana-debug extension
+// EMSCRIPTEN_KEEPALIVE will add to EXPORTED_FUNCTIONS automatically
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE void execute_command(const char* input);
+    EMSCRIPTEN_KEEPALIVE void create_target(const char* path);
+    EMSCRIPTEN_KEEPALIVE char* get_registers();
+    EMSCRIPTEN_KEEPALIVE char* get_locals();
+    EMSCRIPTEN_KEEPALIVE char* get_func_args();
+    EMSCRIPTEN_KEEPALIVE char* get_stack_trace();
+    EMSCRIPTEN_KEEPALIVE void set_breakpoint(const char* file, uint32_t line);
+}
+
 class LLDBSentry {
 public:
   LLDBSentry() {
@@ -52,7 +65,6 @@ public:
 };
 
 // Emscripten globals
-//int SOCKET_FD_EMSCRIPTEN;
 SBDebugger debugger;
 LLDBSentry sentry;
 char registers_ret[256];
@@ -60,13 +72,13 @@ char locals_ret[1024];
 char arguments_ret[1024];
 char stack_trace_ret[512];
 
-/*void finish(int result) {
-  if (SOCKET_FD_EMSCRIPTEN) {
-    close(SOCKET_FD_EMSCRIPTEN);
-    SOCKET_FD_EMSCRIPTEN = 0;
-  }
-  //emscripten_cancel_main_loop();
-}*/
+// For the get_stack_trace() reply
+// Because the elf file was build with `-Z remap-cwd-prefix=home/`
+const char* project = "home/";
+const char* solana_sdk = "home/home";
+const char* rust_core = "rust/library";
+const string solana_sdk_vscode = "vscode-test-web:///sdk/program";
+const string rust_core_vscode = "vscode-test-web:///rust-solana-1.59.0/library";
 
 int main() {
     std::cout << "LLDB - INIT main() c++\n";
@@ -80,17 +92,13 @@ int main() {
 }
 
 // API
-// EMSCRIPTEN_KEEPALIVE will add to EXPORTED_FUNCTIONS automatically
-extern "C" {
-    EMSCRIPTEN_KEEPALIVE void execute_command(const char* input) {
+void execute_command(const char* input) {
         std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
         debugger.HandleCommand(input);
     }
-}
 
-extern "C" {
-    EMSCRIPTEN_KEEPALIVE void create_target(const char* path) {
+void create_target(const char* path) {
         std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
         SBError error;
@@ -99,10 +107,8 @@ extern "C" {
         const bool add_dependent_libs = false;
         debugger.CreateTarget(path, arch, platform, add_dependent_libs, error);
     }
-}
 
-extern "C" {
-    EMSCRIPTEN_KEEPALIVE const char* get_registers() {
+char* get_registers() {
         std::cout << "LLDB - get_registers()\n";
 
         SBValueList registers;
@@ -116,58 +122,70 @@ extern "C" {
         strcpy(registers_ret, registers_value_str.c_str());
         return registers_ret;
     }
+
+char* get_locals() {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+
+    lldb::SBValueList local_vars;
+    int len;
+    std::string locals_value_str;
+    bool arguments = false;
+    bool locals = true;
+    bool statics = false;
+    bool in_scope_only = true;
+
+    locals_ret[0] = '\0';
+
+    local_vars = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(arguments, locals, statics, in_scope_only);
+    len = local_vars.GetSize();
+
+    // Format: len;type=name=value;...;
+    locals_value_str.append(std::to_string(len));
+    locals_value_str.append(";");
+    for (int i=0; i<len; i++) {
+        locals_value_str.append(local_vars.GetValueAtIndex(i).GetTypeName());
+        locals_value_str.append("=");
+        locals_value_str.append(local_vars.GetValueAtIndex(i).GetName());
+        locals_value_str.append("=");
+        locals_value_str.append(local_vars.GetValueAtIndex(i).GetValue());
+        locals_value_str.append(";");
+    }
+    strcpy(locals_ret, locals_value_str.c_str());
+
+    return locals_ret;
 }
 
-extern "C" {
-    EMSCRIPTEN_KEEPALIVE char* get_locals() {
-	std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+char* get_func_args() {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-	lldb::SBValueList local_vars;
-	int len;
-	std::string locals_value_str;
-	bool arguments = false;
-	bool locals = true;
-	bool statics = false;
-	bool in_scope_only = true;
+    lldb::SBValueList args;
+    int len;
+    std::string arguments_value_str;
+    bool arguments = true;
+    bool locals = false;
+    bool statics = false;
+    bool in_scope_only = true;
 
-	local_vars = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(arguments, locals, statics, in_scope_only);
-	len = local_vars.GetSize();
+    arguments_ret[0] = '\0';
 
-	// Format: len;name=value;...;
-	for (int i=0; i<len; i++) {
-	    locals_value_str.append(std::to_string(len));
-	    locals_value_str.append(";");
-	    locals_value_str.append(local_vars.GetValueAtIndex(0).GetName());
-	    locals_value_str.append("=");
-	    locals_value_str.append(local_vars.GetValueAtIndex(0).GetValue());
-	    locals_value_str.append(";");
-	}
-	strcpy(locals_ret, locals_value_str.c_str());
+    args = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(arguments, locals, statics, in_scope_only);
+    len = args.GetSize();
 
-	return locals_ret;
+    // Format: len;name=value;...;
+    arguments_value_str.append(std::to_string(len));
+    arguments_value_str.append(";");
+    for (int i=0; i<len; i++) {
+        arguments_value_str.append(args.GetValueAtIndex(i).GetTypeName());
+        arguments_value_str.append("=");
+        arguments_value_str.append(args.GetValueAtIndex(i).GetName());
+        arguments_value_str.append("=");
+        arguments_value_str.append(args.GetValueAtIndex(i).GetValue());
+        arguments_value_str.append(";");
     }
-}
 
+    strcpy(arguments_ret, arguments_value_str.c_str());
 
-extern "C" {
-    EMSCRIPTEN_KEEPALIVE char* get_func_args() {
-        std::cout << "LLDB - get_func_arguments()\n";
-
-    lldb::SBValueList arguments = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(true, false, false, true);
-
-        std::string arguments_value_str;
-
-        int len = arguments.GetSize();
-        // Format: len;name=value;...;
-        for (int i=0; i<len; i++) {
-            arguments_value_str.append(std::to_string(len));
-            arguments_value_str.append(";"); arguments_value_str.append(arguments.GetValueAtIndex(0).GetName());
-            arguments_value_str.append("=");          arguments_value_str.append(arguments.GetValueAtIndex(0).GetValue());
-            arguments_value_str.append(";");
-        }
-        strcpy(arguments_ret, arguments_value_str.c_str());
-        return arguments_ret;
-    }
+    return arguments_ret;
 }
 
 // Helper
@@ -178,13 +196,7 @@ char* split(char* str, const char* sub_str) {
     return ret + strlen(sub_str);
 }
 
-// Because the elf file was build with `-Z remap-cwd-prefix=home/`
-const char* solana_sdk = "home/home";
-const char* rust_core = "rust/library";
-const string solana_sdk_vscode = "vscode-test-web:///sdk/program";
-const string rust_core_vscode = "vscode-test-web:///rust-solana-1.59.0/library";
-extern "C" {
-    EMSCRIPTEN_KEEPALIVE char* get_stack_trace() {
+char* get_stack_trace() {
         std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
         lldb::SBFrame frame;
@@ -203,10 +215,15 @@ extern "C" {
 
 	path_len_ret = frame.GetLineEntry().GetFileSpec().GetPath(path, PATH_LEN);
 
-	if ((split_path = split(path, solana_sdk)) != NULL)
-	    file_path.append(solana_sdk_vscode);
-	else if ((split_path = split(path, rust_core)) != NULL)
-	    file_path.append(rust_core_vscode);
+        // Solana sdk path
+        if ((split_path = split(path, solana_sdk)) != NULL)
+            file_path.append(solana_sdk_vscode);
+        // Rust core path
+        else if ((split_path = split(path, rust_core)) != NULL)
+            file_path.append(rust_core_vscode);
+        // Project path
+        else
+            split_path = split(path, project);
 
 	file_path.append(split_path);
 
@@ -221,7 +238,12 @@ extern "C" {
 
 	return stack_trace_ret;
     }
-}
+
+void set_breakpoint(const char* file, uint32_t line) {
+        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+    
+        debugger.GetSelectedTarget().BreakpointCreateByLocation(file, line);
+    }
 
 
 #else // ---------------------------------------------------------------------------------
