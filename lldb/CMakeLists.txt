@@ -102,7 +102,7 @@ add_subdirectory(utils/TableGen)
 
 add_subdirectory(source)
 add_subdirectory(tools)
-add_subdirectory(docs)
+#add_subdirectory(docs)
 
 if (LLDB_ENABLE_PYTHON)
   if(LLDB_BUILD_FRAMEWORK)

@@ -1,0 +1,178 @@
+Performing C SOURCE FILE Test C_SUPPORTS_WERROR_UNGUARDED_AVAILABILITY_NEW failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_bd08d/fast && /usr/bin/make  -f CMakeFiles/cmTC_bd08d.dir/build.make CMakeFiles/cmTC_bd08d.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_bd08d.dir/src.c.o
+/usr/bin/cc -DC_SUPPORTS_WERROR_UNGUARDED_AVAILABILITY_NEW  -fPIC -fno-semantic-interposition -Werror=date-time    -Werror -Werror=unguarded-availability-new -o CMakeFiles/cmTC_bd08d.dir/src.c.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.c
+cc1: error: '-Werror=unguarded-availability-new': no option -Wunguarded-availability-new
+CMakeFiles/cmTC_bd08d.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_bd08d.dir/src.c.o' failed
+make[1]: *** [CMakeFiles/cmTC_bd08d.dir/src.c.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_bd08d/fast' failed
+make: *** [cmTC_bd08d/fast] Error 2
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_SUPPORTS_WERROR_UNGUARDED_AVAILABILITY_NEW failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_bd1d0/fast && /usr/bin/make  -f CMakeFiles/cmTC_bd1d0.dir/build.make CMakeFiles/cmTC_bd1d0.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_bd1d0.dir/src.cxx.o
+/usr/bin/c++ -DCXX_SUPPORTS_WERROR_UNGUARDED_AVAILABILITY_NEW  -fPIC -fno-semantic-interposition -fvisibility-inlines-hidden -Werror=date-time    -Werror -Werror=unguarded-availability-new -o CMakeFiles/cmTC_bd1d0.dir/src.cxx.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.cxx
+cc1plus: error: '-Werror=unguarded-availability-new': no option -Wunguarded-availability-new
+CMakeFiles/cmTC_bd1d0.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_bd1d0.dir/src.cxx.o' failed
+make[1]: *** [CMakeFiles/cmTC_bd1d0.dir/src.cxx.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_bd1d0/fast' failed
+make: *** [cmTC_bd1d0/fast] Error 2
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_SUPPORTS_COVERED_SWITCH_DEFAULT_FLAG failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_d7ae2/fast && /usr/bin/make  -f CMakeFiles/cmTC_d7ae2.dir/build.make CMakeFiles/cmTC_d7ae2.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_d7ae2.dir/src.c.o
+/usr/bin/cc -DC_SUPPORTS_COVERED_SWITCH_DEFAULT_FLAG  -fPIC -fno-semantic-interposition -Werror=date-time -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wno-missing-field-initializers -Wimplicit-fallthrough    -Werror -Wcovered-switch-default -o CMakeFiles/cmTC_d7ae2.dir/src.c.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.c
+cc: error: unrecognized command line option '-Wcovered-switch-default'; did you mean '-Wno-switch-default'?
+CMakeFiles/cmTC_d7ae2.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_d7ae2.dir/src.c.o' failed
+make[1]: *** [CMakeFiles/cmTC_d7ae2.dir/src.c.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_d7ae2/fast' failed
+make: *** [cmTC_d7ae2/fast] Error 2
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_SUPPORTS_COVERED_SWITCH_DEFAULT_FLAG failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_53428/fast && /usr/bin/make  -f CMakeFiles/cmTC_53428.dir/build.make CMakeFiles/cmTC_53428.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_53428.dir/src.cxx.o
+/usr/bin/c++ -DCXX_SUPPORTS_COVERED_SWITCH_DEFAULT_FLAG  -fPIC -fno-semantic-interposition -fvisibility-inlines-hidden -Werror=date-time -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -Wimplicit-fallthrough    -Werror -Wcovered-switch-default -o CMakeFiles/cmTC_53428.dir/src.cxx.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.cxx
+c++: error: unrecognized command line option '-Wcovered-switch-default'; did you mean '-Wno-switch-default'?
+CMakeFiles/cmTC_53428.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_53428.dir/src.cxx.o' failed
+make[1]: *** [CMakeFiles/cmTC_53428.dir/src.cxx.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_53428/fast' failed
+make: *** [cmTC_53428/fast] Error 2
+
+
+Source file was:
+int main() { return 0; }
+Performing C++ SOURCE FILE Test CXX_WONT_WARN_ON_FINAL_NONVIRTUALDTOR failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_8b4c7/fast && /usr/bin/make  -f CMakeFiles/cmTC_8b4c7.dir/build.make CMakeFiles/cmTC_8b4c7.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_8b4c7.dir/src.cxx.o
+/usr/bin/c++ -DCXX_WONT_WARN_ON_FINAL_NONVIRTUALDTOR  -fPIC -fno-semantic-interposition -fvisibility-inlines-hidden -Werror=date-time -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -Wimplicit-fallthrough -Wno-class-memaccess -Wno-redundant-move -Wno-pessimizing-move -Wno-noexcept-type  -Werror=non-virtual-dtor -o CMakeFiles/cmTC_8b4c7.dir/src.cxx.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.cxx
+/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.cxx:2:36: error: ‘class base’ has virtual functions and accessible non-virtual destructor [-Werror=non-virtual-dtor]
+    2 |                              class base {friend f; public: virtual void anchor();protected: ~base();};
+      |                                    ^~~~
+cc1plus: some warnings being treated as errors
+CMakeFiles/cmTC_8b4c7.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_8b4c7.dir/src.cxx.o' failed
+make[1]: *** [CMakeFiles/cmTC_8b4c7.dir/src.cxx.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_8b4c7/fast' failed
+make: *** [cmTC_8b4c7/fast] Error 2
+
+
+Source file was:
+class f {};
+                             class base {friend f; public: virtual void anchor();protected: ~base();};
+                             int main() { return 0; }
+Performing C SOURCE FILE Test C_WCOMMENT_ALLOWS_LINE_WRAP failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_5cd58/fast && /usr/bin/make  -f CMakeFiles/cmTC_5cd58.dir/build.make CMakeFiles/cmTC_5cd58.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_5cd58.dir/src.c.o
+/usr/bin/cc -DC_WCOMMENT_ALLOWS_LINE_WRAP  -fPIC -fno-semantic-interposition -Werror=date-time -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wno-missing-field-initializers -Wimplicit-fallthrough  -Werror -Wcomment -o CMakeFiles/cmTC_5cd58.dir/src.c.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.c
+/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.c:1:1: error: multi-line comment [-Werror=comment]
+    1 | // \
+      | ^
+cc1: all warnings being treated as errors
+CMakeFiles/cmTC_5cd58.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_5cd58.dir/src.c.o' failed
+make[1]: *** [CMakeFiles/cmTC_5cd58.dir/src.c.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_5cd58/fast' failed
+make: *** [cmTC_5cd58/fast] Error 2
+
+
+Source file was:
+// \
+//
+int main() {return 0;}
+Performing C SOURCE FILE Test C_SUPPORTS_STRING_CONVERSION_FLAG failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_bd627/fast && /usr/bin/make  -f CMakeFiles/cmTC_bd627.dir/build.make CMakeFiles/cmTC_bd627.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_bd627.dir/src.c.o
+/usr/bin/cc -DC_SUPPORTS_STRING_CONVERSION_FLAG  -fPIC -fno-semantic-interposition -Werror=date-time -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wno-missing-field-initializers -Wimplicit-fallthrough -Wno-comment    -Werror -Wstring-conversion -o CMakeFiles/cmTC_bd627.dir/src.c.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.c
+cc: error: unrecognized command line option '-Wstring-conversion'; did you mean '-Wsign-conversion'?
+CMakeFiles/cmTC_bd627.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_bd627.dir/src.c.o' failed
+make[1]: *** [CMakeFiles/cmTC_bd627.dir/src.c.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_bd627/fast' failed
+make: *** [cmTC_bd627/fast] Error 2
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_SUPPORTS_STRING_CONVERSION_FLAG failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_318f7/fast && /usr/bin/make  -f CMakeFiles/cmTC_318f7.dir/build.make CMakeFiles/cmTC_318f7.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_318f7.dir/src.cxx.o
+/usr/bin/c++ -DCXX_SUPPORTS_STRING_CONVERSION_FLAG  -fPIC -fno-semantic-interposition -fvisibility-inlines-hidden -Werror=date-time -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -Wimplicit-fallthrough -Wno-class-memaccess -Wno-redundant-move -Wno-pessimizing-move -Wno-noexcept-type -Wdelete-non-virtual-dtor -Wsuggest-override -Wno-comment    -Werror -Wstring-conversion -o CMakeFiles/cmTC_318f7.dir/src.cxx.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/src.cxx
+c++: error: unrecognized command line option '-Wstring-conversion'; did you mean '-Wsign-conversion'?
+CMakeFiles/cmTC_318f7.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_318f7.dir/src.cxx.o' failed
+make[1]: *** [CMakeFiles/cmTC_318f7.dir/src.cxx.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_318f7/fast' failed
+make: *** [cmTC_318f7/fast] Error 2
+
+
+Source file was:
+int main() { return 0; }
+Determining if the os_signpost_interval_begin exist failed with the following output:
+Change Dir: /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_2b3b1/fast && /usr/bin/make  -f CMakeFiles/cmTC_2b3b1.dir/build.make CMakeFiles/cmTC_2b3b1.dir/build
+make[1]: Entering directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_2b3b1.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -fPIC -fno-semantic-interposition -Werror=date-time -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wno-missing-field-initializers -Wimplicit-fallthrough -Wno-comment -Wmisleading-indentation -ffunction-sections -fdata-sections  -o CMakeFiles/cmTC_2b3b1.dir/CheckSymbolExists.c.o -c /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/CheckSymbolExists.c:2:10: fatal error: os/signpost.h: No such file or directory
+    2 | #include <os/signpost.h>
+      |          ^~~~~~~~~~~~~~~
+compilation terminated.
+CMakeFiles/cmTC_2b3b1.dir/build.make:77: recipe for target 'CMakeFiles/cmTC_2b3b1.dir/CheckSymbolExists.c.o' failed
+make[1]: *** [CMakeFiles/cmTC_2b3b1.dir/CheckSymbolExists.c.o] Error 1
+make[1]: Leaving directory '/home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp'
+Makefile:127: recipe for target 'cmTC_2b3b1/fast' failed
+make: *** [cmTC_2b3b1/fast] Error 2
+
+
+File /home/wj/temp/LLDB-WASM/llvm-project/lldb/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <os/signpost.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef os_signpost_interval_begin
+  return ((int*)(&os_signpost_interval_begin))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}

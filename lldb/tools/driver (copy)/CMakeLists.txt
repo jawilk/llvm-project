@@ -17,10 +17,10 @@ add_lldb_tool(lldb
   BreakpointBase.cpp
   IOStream.cpp
   LLDBUtils.cpp
+  VSCode.cpp
   SourceBreakpoint.cpp
   JSONUtils.cpp
   FunctionBreakpoint.cpp
-  VSCode.cpp
 
   LINK_LIBS
     liblldb
