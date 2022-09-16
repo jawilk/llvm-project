@@ -41,21 +41,21 @@ int64_t VSCode::GetNextSourceReference() {
 }
 
 lldb::SBThread VSCode::GetLLDBThread(const llvm::json::Object &arguments) {
+  llvm::errs() << "VSCode::GetLLDBThread\n";
   auto tid = GetSigned(arguments, "threadId", LLDB_INVALID_THREAD_ID);
+  llvm::errs() << "ID: " << tid << "\n";
+  llvm::errs() << "num threads: " << target.GetProcess().GetNumThreads() << "\n";
   return target.GetProcess().GetThreadByID(tid);
 }
 
 lldb::SBFrame VSCode::GetLLDBFrame(const llvm::json::Object &arguments) {
   const uint64_t frame_id = GetUnsigned(arguments, "frameId", UINT64_MAX);
-  printf("frame_id: %d\n", frame_id);
   lldb::SBProcess process = target.GetProcess();
-  return process.GetSelectedThread().GetSelectedFrame();
-/*
   // Upper 32 bits is the thread index ID
   lldb::SBThread thread =
       process.GetThreadByIndexID(GetLLDBThreadIndexID(frame_id));
   // Lower 32 bits is the frame index
-  return thread.GetFrameAtIndex(GetLLDBFrameID(frame_id));*/
+  return thread.GetFrameAtIndex(GetLLDBFrameID(frame_id));
 }
 
 llvm::json::Value VSCode::CreateTopLevelScopes() {

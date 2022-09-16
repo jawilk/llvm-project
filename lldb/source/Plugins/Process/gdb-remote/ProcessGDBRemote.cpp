@@ -1203,6 +1203,7 @@ llvm::errs() << "ProcessGDBRemote::DidAttach\n";
 }
 
 Status ProcessGDBRemote::WillResume() {
+  llvm::errs() << "ProcessGDBRemote::WillResume\n";
   m_continue_c_tids.clear();
   m_continue_C_tids.clear();
   m_continue_s_tids.clear();
@@ -3625,13 +3626,13 @@ thread_result_t ProcessGDBRemote::AsyncThread(void *arg) {
 		      process->RunPrivateStateThread(false);
                     }
 		    StringExtractorGDBRemote response;
-
+                    llvm::errs() << "BEFORE send wait continue AsyncThread\n";
 		    StateType stop_state =
 		        process->GetGDBRemote().SendContinuePacketAndWaitForResponse(
 		            *process, *process->GetUnixSignals(),
 		            llvm::StringRef(continue_cstr, continue_cstr_len),
 		            process->GetInterruptTimeout(), response);
-
+                      llvm::errs() << "AFTER send wait continue AsyncThread\n";
 		      // We need to immediately clear the thread ID list so we are sure
 		      // to get a valid list of threads. The thread ID list might be
 		      // contained within the "response", or the stop reply packet that
@@ -3675,6 +3676,7 @@ thread_result_t ProcessGDBRemote::AsyncThread(void *arg) {
 		        break;
 		      }
 		      case eStateInvalid: {
+	  llvm::errs() << "eStateInvalid ProcessGDBRemote::AsyncThread\n";
 		        // Check to see if we were trying to attach and if we got back
 		        // the "E87" error code from debugserver -- this indicates that
 		        // the process is not debuggable.  Return a slightly more

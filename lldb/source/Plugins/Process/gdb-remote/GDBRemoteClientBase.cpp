@@ -40,7 +40,8 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
     ContinueDelegate &delegate, const UnixSignals &signals,
     llvm::StringRef payload, std::chrono::seconds interrupt_timeout,
     StringExtractorGDBRemote &response) {
-  Log *log = GetLog(GDBRLog::Process);
+  llvm::errs() << "GDBRemoteClientBase::SendContinuePacketAndWaitForResponse\n";
+  //Log *log = GetLog(GDBRLog::Process);
   response.Clear();
 
   {
@@ -49,8 +50,9 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
     m_should_stop = false;
   }
   ContinueLock cont_lock(*this);
-  if (!cont_lock)
-    return eStateInvalid;
+  llvm::errs() << "AFTER SENT continue packet GDBRemoteClientBase::SendContinuePacketAndWaitForResponse\n";
+  //if (!cont_lock)
+    //return eStateInvalid;
   OnRunPacketSent(true);
   // The main ReadPacket loop wakes up at computed_timeout intervals, just to 
   // check that the connection hasn't dropped.  When we wake up we also check
@@ -61,12 +63,14 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
                                                    kWakeupInterval);
   for (;;) {
     PacketResult read_result = ReadPacket(response, computed_timeout, false);
+    llvm::errs() << "AFTER ReadPacket in SendContinuePacketAndWaitForResponse\n";
     // Reset the computed_timeout to the default value in case we are going
     // round again.
-    computed_timeout = std::min(interrupt_timeout, kWakeupInterval);
+    //computed_timeout = std::min(interrupt_timeout, kWakeupInterval);
     switch (read_result) {
     case PacketResult::ErrorReplyTimeout: {
-      std::lock_guard<std::mutex> lock(m_mutex);
+      llvm::errs() << "ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";
+      /*std::lock_guard<std::mutex> lock(m_mutex);
       if (m_async_count == 0) {
         continue;
       }
@@ -80,24 +84,30 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
         // than our wakeup timeout.
         auto new_wait = m_interrupt_endpoint - cur_time;
         computed_timeout = std::min(kWakeupInterval,
-            std::chrono::duration_cast<std::chrono::seconds>(new_wait));
+            std::chrono::duration_cast<std::chrono::seconds>(new_wait));*/
         continue;
-      }
-      break;
+      //}
+      //break;
     }
     case PacketResult::Success:
+      llvm::errs() << "Success - SendContinuePacketAndWaitForResponse\n";
       break;
     default:
-      LLDB_LOGF(log, "GDBRemoteClientBase::%s () ReadPacket(...) => false",
-                __FUNCTION__);
-      return eStateInvalid;
+llvm::errs() << "DEFAULT PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";
+        continue;
+      //LLDB_LOGF(log, "GDBRemoteClientBase::%s () ReadPacket(...) => false",
+        //        __FUNCTION__);
+      //return eStateInvalid;
     }
-    if (response.Empty())
-      return eStateInvalid;
+    if (response.Empty()) {
+llvm::errs() << "response EMPTY PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";
+    //  return eStateInvalid;
+    }
 
     const char stop_type = response.GetChar();
-    LLDB_LOGF(log, "GDBRemoteClientBase::%s () got packet: %s", __FUNCTION__,
-              response.GetStringRef().data());
+    //LLDB_LOGF(log, "GDBRemoteClientBase::%s () got packet: %s", __FUNCTION__,
+      //        response.GetStringRef().data());
+llvm::errs() << "BEFORE stop_type PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse - Type: " << stop_type << "\n";
 
     switch (stop_type) {
     case 'W':
@@ -107,8 +117,8 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
       // ERROR
       return eStateInvalid;
     default:
-      LLDB_LOGF(log, "GDBRemoteClientBase::%s () unrecognized async packet",
-                __FUNCTION__);
+      //LLDB_LOGF(log, "GDBRemoteClientBase::%s () unrecognized async packet",
+       //         __FUNCTION__);
       return eStateInvalid;
     case 'O': {
       std::string inferior_stdout;
@@ -310,11 +320,12 @@ void GDBRemoteClientBase::ContinueLock::unlock() {
 
 GDBRemoteClientBase::ContinueLock::LockResult
 GDBRemoteClientBase::ContinueLock::lock() {
-  Log *log = GetLog(GDBRLog::Process);
+  llvm::errs() << "GDBRemoteClientBase::ContinueLock::lock\n";
+  /*Log *log = GetLog(GDBRLog::Process);
   LLDB_LOGF(log, "GDBRemoteClientBase::ContinueLock::%s() resuming with %s",
-            __FUNCTION__, m_comm.m_continue_packet.c_str());
+            __FUNCTION__, m_comm.m_continue_packet.c_str());*/
 
-  lldbassert(!m_acquired);
+  /*lldbassert(!m_acquired);
   std::unique_lock<std::mutex> lock(m_comm.m_mutex);
   m_comm.m_cv.wait(lock, [this] { return m_comm.m_async_count == 0; });
   if (m_comm.m_should_stop) {
@@ -322,14 +333,15 @@ GDBRemoteClientBase::ContinueLock::lock() {
     LLDB_LOGF(log, "GDBRemoteClientBase::ContinueLock::%s() cancelled",
               __FUNCTION__);
     return LockResult::Cancelled;
-  }
+  }*/
   if (m_comm.SendPacketNoLock(m_comm.m_continue_packet) !=
       PacketResult::Success)
     return LockResult::Failed;
 
-  lldbassert(!m_comm.m_is_running);
+  //lldbassert(!m_comm.m_is_running);
   m_comm.m_is_running = true;
   m_acquired = true;
+  llvm::errs() << "END GDBRemoteClientBase::ContinueLock::lock\n";
   return LockResult::Success;
 }
 

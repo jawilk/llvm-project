@@ -383,7 +383,6 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
 
   size_t bytes_sent = src_len;
   error = m_io_sp->Write(src, bytes_sent);
-  llvm::errs() << "ConnectionFileDescriptor::Write bytes_sent: " << bytes_sent << "\n";
   /*if (log) {
     LLDB_LOGF(log,
               "%p ConnectionFileDescriptor::Write(fd = %" PRIu64
@@ -417,7 +416,6 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
 
     return 0;
   }
-  llvm::errs() << "END ConnectionFileDescriptor::Write\n";
   status = eConnectionStatusSuccess;
   return bytes_sent;
 }

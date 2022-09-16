@@ -176,7 +176,6 @@ size_t Communication::Read(void *dst, size_t dst_len,
 
 size_t Communication::Write(const void *src, size_t src_len,
                             ConnectionStatus &status, Status *error_ptr) {
-  llvm::errs() << "Communication::Write src_len: " << src_len << "\n";
   lldb::ConnectionSP connection_sp(m_connection_sp);
 
   std::lock_guard<std::mutex> guard(m_write_mutex);
@@ -185,10 +184,8 @@ size_t Communication::Write(const void *src, size_t src_len,
            ") connection = {3}",
            this, src, (uint64_t)src_len, connection_sp.get());*/
 
-  if (connection_sp) {
-    llvm::errs() << "IS connection_sp Communication::Write\n";
+  if (connection_sp)
     return connection_sp->Write(src, src_len, status, error_ptr);
-  }
 
   if (error_ptr)
     error_ptr->SetErrorString("Invalid connection.");
@@ -210,7 +207,7 @@ size_t Communication::WriteAll(const void *src, size_t src_len,
     #endif
     total_written += Write(static_cast<const char *>(src) + total_written,
                            src_len - total_written, status, error_ptr);
-    llvm::errs() << "total_written: " << total_written << "\n";
+    llvm::errs() << "total_written (after sleep i.e. real written): " << total_written << "\n";
   //} while (status == eConnectionStatusSuccess && total_written < src_len);
   } while (total_written < src_len);
   return total_written;

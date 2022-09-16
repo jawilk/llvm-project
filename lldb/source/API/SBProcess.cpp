@@ -561,7 +561,7 @@ SBError SBProcess::Continue() {
   if (process_sp) {
     std::lock_guard<std::recursive_mutex> guard(
         process_sp->GetTarget().GetAPIMutex());
-
+  llvm::errs() << "!!!! IS NOT SYNCHRONOUS: " << process_sp->GetTarget().GetDebugger().GetAsyncExecution() << "\n";
     if (process_sp->GetTarget().GetDebugger().GetAsyncExecution())
       sb_error.ref() = process_sp->Resume();
     else

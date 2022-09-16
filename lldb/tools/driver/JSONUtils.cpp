@@ -11,7 +11,7 @@
 #include <sstream>
 
 #include "llvm/ADT/Optional.h"
-//#include "llvm/Support/FormatAdapters.h"
+#include "llvm/Support/FormatAdapters.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/ScopedPrinter.h"
 
@@ -481,6 +481,7 @@ llvm::json::Value CreateSource(lldb::SBLineEntry &line_entry) {
 llvm::json::Value CreateSource(llvm::StringRef source_path) {
   llvm::json::Object source;
   llvm::StringRef name = llvm::sys::path::filename(source_path);
+  llvm::errs() << "CreateSource name: " << name << "\n";
   EmplaceSafeString(source, "name", name);
   EmplaceSafeString(source, "path", source_path);
   return llvm::json::Value(std::move(source));
@@ -548,9 +549,9 @@ llvm::json::Value CreateSource(lldb::SBFrame &frame, int64_t &disasm_line) {
         spaces = 1;
       line.clear();
       llvm::raw_string_ostream line_strm(line);
-      /*line_strm << llvm::formatv("{0:X+}: <{1}> {2} {3,12} {4}", inst_addr,
+      line_strm << llvm::formatv("{0:X+}: <{1}> {2} {3,12} {4}", inst_addr,
                                  inst_offset, llvm::fmt_repeat(' ', spaces), m,
-                                 o);*/
+                                 o);
 
       // If there is a comment append it starting at column 60 or after one
       // space past the last char
@@ -564,7 +565,7 @@ llvm::json::Value CreateSource(lldb::SBFrame &frame, int64_t &disasm_line) {
       source.addr_to_line[inst_addr] = i + 1;
     }
     // Flush the source stream
-    src_strm.str();
+    llvm::errs() << "SOURCE DAT: " << src_strm.str() << "\n";
     auto sourceReference = VSCode::GetNextSourceReference();
     g_vsc.source_map[sourceReference] = std::move(source);
     g_vsc.addr_to_source_ref[low_pc] = sourceReference;

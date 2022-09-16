@@ -44,13 +44,14 @@ using namespace std;
 extern "C" {
     EMSCRIPTEN_KEEPALIVE void execute_command(const char* input);
     EMSCRIPTEN_KEEPALIVE void create_target(const char* path);
-    EMSCRIPTEN_KEEPALIVE char* get_registers();
-    EMSCRIPTEN_KEEPALIVE char* get_locals();
-    EMSCRIPTEN_KEEPALIVE char* get_func_args();
-    EMSCRIPTEN_KEEPALIVE char* get_stack_trace();
-    EMSCRIPTEN_KEEPALIVE void set_breakpoint(const char* file, uint32_t line);
     EMSCRIPTEN_KEEPALIVE const char* request_variables(char* const json);
     EMSCRIPTEN_KEEPALIVE const char* request_scopes(char* const json);
+    EMSCRIPTEN_KEEPALIVE const char* request_setBreakpoints(char* const json);
+    EMSCRIPTEN_KEEPALIVE const char* request_stackTrace(char* const json);
+    EMSCRIPTEN_KEEPALIVE const char* request_source(char* const json);
+    EMSCRIPTEN_KEEPALIVE void request_next();
+    EMSCRIPTEN_KEEPALIVE void request_stepIn();
+    EMSCRIPTEN_KEEPALIVE void request_stepOut();
 }
 
 class LLDBSentry {
@@ -69,11 +70,6 @@ public:
 //SBDebugger debugger;
 static LLDBSentry sentry;
 //VSCode g_vsc;
-//SBDebugger debugger;
-char registers_ret[256];
-char locals_ret[1024];
-char arguments_ret[1024];
-char stack_trace_ret[512];
 
 // JSON
 void read_JSON(std::string json, llvm::json::Object &object) {
@@ -101,14 +97,6 @@ const char* build_JSON_str(const llvm::json::Value &json) {
   return strdup(strm.str().c_str());
 }
 
-// For the get_stack_trace() reply
-// Because the elf file was build with `-Z remap-cwd-prefix=home/`
-const char* project = "home/";
-const char* solana_sdk = "home/home";
-const char* rust_core = "rust/library";
-const string project_vscode = "vscode-test-web:///";
-const string solana_sdk_vscode = "vscode-test-web:///sdk/program";
-const string rust_core_vscode = "vscode-test-web:///rust-solana-1.59.0/library";
 int main() {
     std::cout << "LLDB - INIT main() c++\n";
 
@@ -138,7 +126,51 @@ void create_target(const char* path) {
     g_vsc.target = g_vsc.debugger.CreateTarget(path, arch, platform, add_dependent_libs, error);
 }
 
-// VSCODE API
+void request_next() {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+
+    g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().StepOver();
+}
+
+void request_stepIn() {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+
+    g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().StepInto();
+}
+
+void request_stepOut() {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+
+    g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().StepOut();
+}
+
+const char* request_source(char* const json) {
+  llvm::json::Object request;
+  llvm::json::Object response;
+
+  read_JSON(json, request);
+
+  FillResponse(request, response);
+  llvm::json::Object body;
+
+  auto arguments = request.getObject("arguments");
+  auto source = arguments->getObject("source");
+  auto sourceReference = GetSigned(source, "sourceReference", -1);
+  auto pos = g_vsc.source_map.find((lldb::addr_t)sourceReference);
+  if (pos != g_vsc.source_map.end()) {
+    llvm::errs() << "SOURCE CONTENTS: " << pos->second.content << "\n";
+    EmplaceSafeString(body, "content", pos->second.content);
+  } else {
+    response["success"] = llvm::json::Value(false);
+  }
+  EmplaceSafeString(body, "mimeType", "text/x-lldb.disassembly");
+  response.try_emplace("body", std::move(body));
+
+  cout << "END request_source: " << response.getString("type").getValue().data() << "\n";
+
+  return build_JSON_str(llvm::json::Value(std::move(response)));
+}
+
 const char* request_scopes(char* const json) {
   llvm::json::Object request;
   llvm::json::Object response;
@@ -147,6 +179,7 @@ const char* request_scopes(char* const json) {
 
   FillResponse(request, response);
   llvm::json::Object body;
+
   auto arguments = request.getObject("arguments");
   lldb::SBFrame frame = g_vsc.GetLLDBFrame(*arguments);
  
@@ -186,6 +219,113 @@ lldb::SBValueList *GetTopLevelScope(int64_t variablesReference) {
   }
 }
 
+const char* request_stackTrace(char* const json) {
+  llvm::errs() << "LLDB WASM call - " << __FUNCTION__ << "\n";
+  llvm::json::Object request;
+  llvm::json::Object response;
+
+  read_JSON(json, request);
+
+  FillResponse(request, response);
+  lldb::SBError error;
+  auto arguments = request.getObject("arguments");
+  lldb::SBThread thread = g_vsc.GetLLDBThread(*arguments);
+  llvm::json::Array stackFrames;
+  llvm::json::Object body;
+  llvm::errs() << "MID1 LLDB WASM call - " << __FUNCTION__ << "\n";
+  if (thread.IsValid()) {
+  cout << "MID thread IS VALID request_stackTrace\n";
+    const auto startFrame = GetUnsigned(arguments, "startFrame", 0);
+    const auto levels = GetUnsigned(arguments, "levels", 0);
+    const auto endFrame = (levels == 0) ? INT64_MAX : (startFrame + levels);
+    for (uint32_t i = startFrame; i < endFrame; ++i) {
+      cout << "FRAME: " << i << "\n";
+      auto frame = thread.GetFrameAtIndex(i);
+      if (!frame.IsValid())
+        break;
+      stackFrames.emplace_back(CreateStackFrame(frame));
+    }
+    const auto totalFrames = thread.GetNumFrames();
+    body.try_emplace("totalFrames", totalFrames);
+  }
+  else
+      cout << "MID thread IS NOT VALID request_stackTrace\n";
+  body.try_emplace("stackFrames", std::move(stackFrames));
+  response.try_emplace("body", std::move(body));
+
+  cout << "END request_stackTrace: " << response.getString("type").getValue().data() << "\n";
+
+  return build_JSON_str(llvm::json::Value(std::move(response)));
+}
+
+const char* request_setBreakpoints(char* const json) {
+  llvm::json::Object request;
+  llvm::json::Object response;
+
+  read_JSON(json, request);
+
+  lldb::SBError error;
+  FillResponse(request, response);
+  auto arguments = request.getObject("arguments");
+  auto source = arguments->getObject("source");
+  const auto path = GetString(source, "path");
+  auto breakpoints = arguments->getArray("breakpoints");
+  llvm::json::Array response_breakpoints;
+
+  // Decode the source breakpoint infos for this "setBreakpoints" request
+  SourceBreakpointMap request_bps;
+  // "breakpoints" may be unset, in which case we treat it the same as being set
+  // to an empty array.
+  if (breakpoints) {
+    for (const auto &bp : *breakpoints) {
+      auto bp_obj = bp.getAsObject();
+      if (bp_obj) {
+        SourceBreakpoint src_bp(*bp_obj);
+        request_bps[src_bp.line] = src_bp;
+
+        // We check if this breakpoint already exists to update it
+        auto existing_source_bps = g_vsc.source_breakpoints.find(path);
+        if (existing_source_bps != g_vsc.source_breakpoints.end()) {
+          const auto &existing_bp =
+              existing_source_bps->second.find(src_bp.line);
+          if (existing_bp != existing_source_bps->second.end()) {
+            existing_bp->second.UpdateBreakpoint(src_bp);
+            AppendBreakpoint(existing_bp->second.bp, response_breakpoints, path,
+                             src_bp.line);
+            continue;
+          }
+        }
+        // At this point the breakpoint is new
+        src_bp.SetBreakpoint(path.data());
+        AppendBreakpoint(src_bp.bp, response_breakpoints, path, src_bp.line);
+        g_vsc.source_breakpoints[path][src_bp.line] = std::move(src_bp);
+      }
+    }
+  }
+
+  // Delete any breakpoints in this source file that aren't in the
+  // request_bps set. There is no call to remove breakpoints other than
+  // calling this function with a smaller or empty "breakpoints" list.
+  auto old_src_bp_pos = g_vsc.source_breakpoints.find(path);
+  if (old_src_bp_pos != g_vsc.source_breakpoints.end()) {
+    for (auto &old_bp : old_src_bp_pos->second) {
+      auto request_pos = request_bps.find(old_bp.first);
+      if (request_pos == request_bps.end()) {
+        // This breakpoint no longer exists in this source file, delete it
+        g_vsc.target.BreakpointDelete(old_bp.second.bp.GetID());
+        old_src_bp_pos->second.erase(old_bp.first);
+      }
+    }
+  }
+
+  llvm::json::Object body;
+  body.try_emplace("breakpoints", std::move(response_breakpoints));
+  response.try_emplace("body", std::move(body));
+
+  cout << "END setBreakpoints: " << response.getString("type").getValue().data() << "\n";
+
+  return build_JSON_str(llvm::json::Value(std::move(response)));
+}
 
 const char* request_variables(char* const json) {
   llvm::json::Object request;
@@ -271,149 +411,6 @@ const char* request_variables(char* const json) {
 
   return build_JSON_str(llvm::json::Value(std::move(response)));
 }
-
-// Helper
-char* split_end(char* str, const char* sub_str) {
-    char* ret = strstr(str, sub_str);
-    if (ret == NULL)
-        return NULL;
-    return ret + strlen(sub_str);
-}
-
-char* get_stack_trace() {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
-        lldb::SBFrame frame;
-	uint32_t line;
-	const char* func_name;
-	string file_path;
-	char path[PATH_LEN];
-	int path_len_ret;
-	const char* split_path;
-	std::string stack_trace_str;
-
-        stack_trace_ret[0] = '\0';
-
-	frame = g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame();
-
-	line = frame.GetLineEntry().GetLine(); 
-	func_name = frame.GetFunctionName();
-
-	path_len_ret = frame.GetLineEntry().GetFileSpec().GetPath(path, PATH_LEN);
-
-        // Solana sdk path
-        if ((split_path = split_end(path, solana_sdk)) != NULL)
-            file_path.append(solana_sdk_vscode);
-        // Rust core path
-        else if ((split_path = split_end(path, rust_core)) != NULL)
-            file_path.append(rust_core_vscode);
-        // Project path
-        else {
-            split_path = split_end(path, project);
-            file_path.append(project_vscode);
-        }
-
-	file_path.append(split_path);
-
-	// Format: line_num;func_name;file_path
-	stack_trace_str.append(to_string(line));
-	stack_trace_str.append(";");
-	stack_trace_str.append(func_name);
-	stack_trace_str.append(";");
-	stack_trace_str.append(file_path);
-
-	strcpy(stack_trace_ret, stack_trace_str.c_str());
-
-	return stack_trace_ret;
-    }
-
-void set_breakpoint(const char* file, uint32_t line) {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-    
-        g_vsc.debugger.GetSelectedTarget().BreakpointCreateByLocation(file, line);
-}
-
-/*
-char* get_registers() {
-        std::cout << "LLDB - get_registers()\n";
-
-        SBValueList registers;
-        std::string registers_value_str;
-
-        registers = g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetRegisters();
-        for (int i=0; i<MAX_REGS; i++) {
-            registers_value_str.append(registers.GetValueAtIndex(0).GetChildAtIndex(i).GetValue());
-            registers_value_str.append(";");
-        }
-        strcpy(registers_ret, registers_value_str.c_str());
-        return registers_ret;
-    }
-
-char* get_locals() {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
-    lldb::SBValueList local_vars;
-    int len;
-    std::string locals_value_str;
-    bool arguments = false;
-    bool locals = true;
-    bool statics = false;
-    bool in_scope_only = true;
-
-    locals_ret[0] = '\0';
-
-    local_vars = g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(arguments, locals, statics, in_scope_only);
-    len = local_vars.GetSize();
-
-    // Format: len;type=name=value;...;
-    locals_value_str.append(std::to_string(len));
-    locals_value_str.append(";");
-    for (int i=0; i<len; i++) {
-        locals_value_str.append(local_vars.GetValueAtIndex(i).GetTypeName());
-        locals_value_str.append("=");
-        locals_value_str.append(local_vars.GetValueAtIndex(i).GetName());
-        locals_value_str.append("=");
-        locals_value_str.append(local_vars.GetValueAtIndex(i).GetValue());
-        locals_value_str.append(";");
-    }
-    strcpy(locals_ret, locals_value_str.c_str());
-
-    return locals_ret;
-}
-
-char* get_func_args() {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
-    lldb::SBValueList args;
-    int len;
-    std::string arguments_value_str;
-    bool arguments = true;
-    bool locals = false;
-    bool statics = false;
-    bool in_scope_only = true;
-
-    arguments_ret[0] = '\0';
-
-    args = g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame().GetVariables(arguments, locals, statics, in_scope_only);
-    len = args.GetSize();
-
-    // Format: len;name=value;...;
-    arguments_value_str.append(std::to_string(len));
-    arguments_value_str.append(";");
-    for (int i=0; i<len; i++) {
-        arguments_value_str.append(args.GetValueAtIndex(i).GetTypeName());
-        arguments_value_str.append("=");
-        arguments_value_str.append(args.GetValueAtIndex(i).GetName());
-        arguments_value_str.append("=");
-        arguments_value_str.append(args.GetValueAtIndex(i).GetValue());
-        arguments_value_str.append(";");
-    }
-
-    strcpy(arguments_ret, arguments_value_str.c_str());
-
-    return arguments_ret;
-}
-*/
 
 #else // ---------------------------------------------------------------------------------
 
