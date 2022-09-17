@@ -257,9 +257,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
   //bool disconnected = false;
   while (IsConnected()) {// && !timed_out) {
     lldb::ConnectionStatus status = eConnectionStatusNoConnection;
-    #if defined(__EMSCRIPTEN__)
-        emscripten_sleep(0);
-    #endif
+
     size_t bytes_read = Read(buffer, sizeof(buffer), timeout, status, &error);
 
     /*LLDB_LOGV(log,
@@ -275,6 +273,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
       if (CheckForPacket(buffer, bytes_read, packet) != PacketType::Invalid)
         return PacketResult::Success;
     }
+    llvm::errs() << "AFTER CheckPacket WHILE\n";
 /* else {
       switch (status) {
       case eConnectionStatusTimedOut:
@@ -398,6 +397,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
     return PacketResult::ErrorReplyTimeout;
   }
   else*/
+  llvm::errs() << "END GDBRemoteCommunication::WaitForPacketNoLock\n";
   return PacketResult::ErrorReplyFailed;
 }
 

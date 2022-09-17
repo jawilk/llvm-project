@@ -554,7 +554,7 @@ llvm::json::Value CreateSource(lldb::SBFrame &frame, int64_t &disasm_line) {
         spaces = 1;
       line.clear();
       llvm::raw_string_ostream line_strm(line);
-      line_strm << llvm::formatv("{0:X+}: <{1}> <{2}> {3} {4,12} {5}", inst_addr,
+      line_strm << llvm::formatv("{0:X+}: {1} <{2}> {3} {4,12} {5}", inst_addr,
                                  inst_bytes, inst_offset, llvm::fmt_repeat(' ', spaces), m,
                                  o);
 

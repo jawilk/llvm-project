@@ -6,6 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#endif
+
 #if defined(__APPLE__)
 // Enable this special support for Apple builds where we can have unlimited
 // select bounds. We tried switching to poll() and kqueue and we were panicing
@@ -276,6 +280,23 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
   if (status != eConnectionStatusSuccess)
     return 0;*/
 
+  int res;
+  fd_set fdr;
+  FD_ZERO(&fdr);
+  FD_SET(m_io_sp->GetWaitableHandle(), &fdr);
+  res = select(m_io_sp->GetWaitableHandle()+1, &fdr, NULL, NULL, NULL);
+  while (!FD_ISSET(m_io_sp->GetWaitableHandle(), &fdr)) {
+     #if defined(__EMSCRIPTEN__)
+          llvm::errs() << "SLEEEEEP ConnectionFileDescriptor::Read\n";
+          emscripten_sleep(0);
+      #endif
+      FD_ZERO(&fdr);
+      FD_SET(m_io_sp->GetWaitableHandle(), &fdr);
+      res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdr, NULL, NULL);
+      if (res == -1)
+          llvm::errs() << "READ SOCKET SELECT FAILED\n";
+  }
+
   Status error;
   size_t bytes_read = dst_len;
   error = m_io_sp->Read(dst, bytes_read);
@@ -296,7 +317,7 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
     status = eConnectionStatusEndOfFile;
   }*/
 
-  if (error_ptr)
+  /*if (error_ptr)
     *error_ptr = error;
 
   if (error.Fail()) {
@@ -343,15 +364,16 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
       status = eConnectionStatusTimedOut;
       return 0;
 
-    default:
+    default:*/
       /*LLDB_LOG(log, "this = {0}, unexpected error: {1}", this,
                llvm::sys::StrError(error_value));*/
-      status = eConnectionStatusError;
+      /*status = eConnectionStatusError;
       break; // Break to close....
     }
 
     return 0;
-  }
+  }*/
+  llvm::errs() << "END ConnectionFileDescriptor::Read bytes_read: " << bytes_read << "\n";
   return bytes_read;
 }
 
@@ -380,7 +402,23 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
   }
 
   Status error;
-
+  llvm::errs() << "m_io_sp->GetWaitableHandle(): " << m_io_sp->GetWaitableHandle() << "\n";
+  int res;
+  fd_set fdw;
+  FD_ZERO(&fdw);
+  FD_SET(m_io_sp->GetWaitableHandle(), &fdw);
+  res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdw, NULL, NULL);
+  while (!FD_ISSET(m_io_sp->GetWaitableHandle(), &fdw)) {
+     #if defined(__EMSCRIPTEN__)
+          llvm::errs() << "SLEEEEEP ConnectionFileDescriptor::Write\n";
+          emscripten_sleep(0);
+      #endif
+      FD_ZERO(&fdw);
+      FD_SET(m_io_sp->GetWaitableHandle(), &fdw);
+      res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdw, NULL, NULL);
+      if (res == -1)
+          llvm::errs() << "WRITE SOCKET SELECT FAILED\n";
+  }
   size_t bytes_sent = src_len;
   error = m_io_sp->Write(src, bytes_sent);
   /*if (log) {

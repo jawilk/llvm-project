@@ -6,10 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if defined(__EMSCRIPTEN__)
-#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
-#endif
-
 #include "lldb/Core/Communication.h"
 
 #include "lldb/Host/HostThread.h"
@@ -201,15 +197,13 @@ size_t Communication::WriteAll(const void *src, size_t src_len,
   llvm::errs() << "\n";
   size_t total_written = 0;
   do {
-    #if defined(__EMSCRIPTEN__)
-      emscripten_sleep(0);
-      llvm::errs() << "SLEEEEEP WriteAll\n";
-    #endif
     total_written += Write(static_cast<const char *>(src) + total_written,
                            src_len - total_written, status, error_ptr);
-    llvm::errs() << "total_written (after sleep i.e. real written): " << total_written << "\n";
+    llvm::errs() << "total_written: " << total_written << "\n";
   //} while (status == eConnectionStatusSuccess && total_written < src_len);
   } while (total_written < src_len);
+
+  llvm::errs() << "END Communication::WriteAll";
   return total_written;
 }
 
