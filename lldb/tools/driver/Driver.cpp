@@ -129,19 +129,19 @@ void create_target(const char* path) {
 void request_next() {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-    g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().StepOver();
+    g_vsc.target.GetProcess().GetSelectedThread().StepOver();
 }
 
 void request_stepIn() {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-    g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().StepInto();
+    g_vsc.target.GetProcess().GetSelectedThread().StepInto();
 }
 
 void request_stepOut() {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-    g_vsc.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().StepOut();
+    g_vsc.target.GetProcess().GetSelectedThread().StepOut();
 }
 
 const char* request_source(char* const json) {

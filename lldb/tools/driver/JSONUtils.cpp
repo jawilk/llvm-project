@@ -537,8 +537,13 @@ llvm::json::Value CreateSource(lldb::SBFrame &frame, int64_t &disasm_line) {
       const char *m = inst.GetMnemonic(g_vsc.target);
       const char *o = inst.GetOperands(g_vsc.target);
       const char *c = inst.GetComment(g_vsc.target);
-      if (pc == inst_addr)
-        disasm_line = i + 1;
+      // FIXME: Find better way to extract the instruction bytes (also we assume always 8 bytes long instructions here which doesn't always hold
+      lldb::SBStream strm;
+      char inst_bytes[24];
+      inst.GetData(g_vsc.target).GetDescription(strm);
+      strncpy(inst_bytes, strm.GetData(), 23);
+      inst_bytes[23] = '\0';
+      disasm_line = i + 1;
       const auto inst_offset = inst_addr - low_pc;
       int spaces = 0;
       if (inst_offset < 10)
@@ -549,8 +554,8 @@ llvm::json::Value CreateSource(lldb::SBFrame &frame, int64_t &disasm_line) {
         spaces = 1;
       line.clear();
       llvm::raw_string_ostream line_strm(line);
-      line_strm << llvm::formatv("{0:X+}: <{1}> {2} {3,12} {4}", inst_addr,
-                                 inst_offset, llvm::fmt_repeat(' ', spaces), m,
+      line_strm << llvm::formatv("{0:X+}: <{1}> <{2}> {3} {4,12} {5}", inst_addr,
+                                 inst_bytes, inst_offset, llvm::fmt_repeat(' ', spaces), m,
                                  o);
 
       // If there is a comment append it starting at column 60 or after one
