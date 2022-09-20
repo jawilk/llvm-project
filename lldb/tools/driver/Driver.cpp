@@ -49,9 +49,9 @@ extern "C" {
     EMSCRIPTEN_KEEPALIVE const char* request_setBreakpoints(char* const json);
     EMSCRIPTEN_KEEPALIVE const char* request_stackTrace(char* const json);
     EMSCRIPTEN_KEEPALIVE const char* request_source(char* const json);
-    EMSCRIPTEN_KEEPALIVE void request_next();
-    EMSCRIPTEN_KEEPALIVE void request_stepIn();
-    EMSCRIPTEN_KEEPALIVE void request_stepOut();
+    EMSCRIPTEN_KEEPALIVE int request_next();
+    EMSCRIPTEN_KEEPALIVE int request_stepIn();
+    EMSCRIPTEN_KEEPALIVE int request_stepOut();
     EMSCRIPTEN_KEEPALIVE int request_continue();
 }
 
@@ -127,22 +127,36 @@ void create_target(const char* path) {
     g_vsc.target = g_vsc.debugger.CreateTarget(path, arch, platform, add_dependent_libs, error);
 }
 
-void request_next() {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
-    g_vsc.target.GetProcess().GetSelectedThread().StepOver();
+int should_terminate(SBError error) {
+   if (!error.Success()) {
+        execute_command("kill");
+        return -1;
+    }
+    return 0;
 }
 
-void request_stepIn() {
+int request_next() {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-    g_vsc.target.GetProcess().GetSelectedThread().StepInto();
+    SBError error;
+    g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, error);
+    return should_terminate(error);
 }
 
-void request_stepOut() {
+int request_stepIn() {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-    g_vsc.target.GetProcess().GetSelectedThread().StepOut();
+    SBError error;
+    g_vsc.target.GetProcess().GetSelectedThread().StepInto(nullptr, LLDB_INVALID_LINE_NUMBER, error, eOnlyThisThread);
+    return should_terminate(error);
+}
+
+int request_stepOut() {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+
+    SBError error;
+    g_vsc.target.GetProcess().GetSelectedThread().StepOut(error);
+    return should_terminate(error);
 }
 
 // -1 to indicate the process has terminated.
@@ -151,11 +165,7 @@ int request_continue() {
 
     SBError error;
     error = g_vsc.target.GetProcess().Continue();
-    if (!error.Success()) {
-        execute_command("kill");
-        return -1;
-    }
-    return 0;
+    return should_terminate(error);
 }
 
 const char* request_source(char* const json) {
