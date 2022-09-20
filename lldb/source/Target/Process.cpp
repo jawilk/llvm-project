@@ -689,12 +689,14 @@ StateType Process::WaitForProcessToStop(const Timeout<std::micro> &timeout,
     case eStateDetached:
     case eStateExited:
     case eStateUnloaded:
+  llvm::errs() << "eStateExited Process::WaitForProcessToStop\n";
       // We need to toggle the run lock as this won't get done in
       // SetPublicState() if the process is hijacked.
       if (hijack_listener_sp && use_run_lock)
         m_public_run_lock.SetStopped();
       return state;
     case eStateStopped:
+  llvm::errs() << "eStateStopped Process::WaitForProcessToStop\n";
       if (Process::ProcessEventData::GetRestartedFromEvent(event_sp.get()))
         continue;
       else {
@@ -1053,16 +1055,16 @@ bool Process::SetExitStatus(int status, const char *cstr) {
   // Use a mutex to protect setting the exit status.
   std::lock_guard<std::mutex> guard(m_exit_status_mutex);
 
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_STATE |
+  /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_STATE |
                                                   LIBLLDB_LOG_PROCESS));
   LLDB_LOGF(
       log, "Process::SetExitStatus (status=%i (0x%8.8x), description=%s%s%s)",
-      status, status, cstr ? "\"" : "", cstr ? cstr : "NULL", cstr ? "\"" : "");
+      status, status, cstr ? "\"" : "", cstr ? cstr : "NULL", cstr ? "\"" : "");*/
 
   // We were already in the exited state
   if (m_private_state.GetValue() == eStateExited) {
-    LLDB_LOGF(log, "Process::SetExitStatus () ignoring exit status because "
-                   "state was already set to eStateExited");
+    //LLDB_LOGF(log, "Process::SetExitStatus () ignoring exit status because "
+      //             "state was already set to eStateExited");
     return false;
   }
 
@@ -1111,11 +1113,12 @@ bool Process::SetProcessExitStatus(
     int signo,      // Zero for no signal
     int exit_status // Exit value of process if signal is zero
     ) {
-  Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_PROCESS));
+  llvm::errs() << "Process::SetProcessExitStatus\n";
+  /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_PROCESS));
   LLDB_LOGF(log,
             "Process::SetProcessExitStatus (pid=%" PRIu64
             ", exited=%i, signal=%i, exit_status=%i)\n",
-            pid, exited, signo, exit_status);
+            pid, exited, signo, exit_status);*/
 
   if (exited) {
     TargetSP target_sp(Debugger::FindTargetWithProcessID(pid));
@@ -1353,10 +1356,13 @@ Status Process::Resume() {
     return error;
   }*/
   Status error = PrivateResume();
+  llvm::errs() << "AFTER PrivateResume ERROR: " << error.AsCString() << "\n";
   if (!error.Success()) {
+  llvm::errs() << "AFTER PrivateResume NOT success\n";
     // Undo running state change
     m_public_run_lock.SetStopped();
   }
+  llvm::errs() << "AFTER PrivateResume SUCCESS\n";
   return error;
 }
 
@@ -3065,10 +3071,12 @@ Status Process::PrivateResume() {
         m_mod_id.BumpResumeID();
         error = DoResume();
         if (error.Success()) {
+  llvm::errs() << "**** DoResume SUCCESS Process::PrivateResume\n";
           DidResume();
           m_thread_list.DidResume();
           //LLDB_LOGF(log, "Process thinks the process has resumed.");
         } else {
+          llvm::errs() << "**** (disconnected) Process::PrivateResume() DoResume failed.\n";
           //LLDB_LOGF(log, "Process::PrivateResume() DoResume failed.");
           return error;
         }
@@ -3358,6 +3366,7 @@ bool Process::ShouldBroadcastEvent(Event *event_ptr) {
   case eStateDetached:
   case eStateExited:
   case eStateUnloaded:
+llvm::errs() << "eStateExited ShouldBroadcastEvent\n";
     m_stdio_communication.SynchronizeWithReadThread();
     m_stdio_communication.StopReadThread();
     m_stdio_communication.Disconnect();
@@ -3469,6 +3478,7 @@ bool Process::ShouldBroadcastEvent(Event *event_ptr) {
                     static_cast<void *>(event_ptr), StateAsCString(state));*/
           ProcessEventData::SetRestartedInEvent(event_ptr, true);
           PrivateResume();
+llvm::errs() << "AFTER PrivateResume ShouldBroadcastEvent\n";
         }
       } else {
         return_value = true;
@@ -3878,12 +3888,13 @@ llvm::errs() << "AFTER GetEventsPrivate Process::RunPrivateStateThread control_o
       }
   llvm::errs() << "BEFORE HandlePrivateEvent RunPrivateStateThread\n";
       HandlePrivateEvent(event_sp);
+  llvm::errs() << "AFTER HandlePrivateEvent RunPrivateStateThread\n";
       //done = false;
     }
 
     if (internal_state == eStateInvalid || internal_state == eStateExited ||
         internal_state == eStateDetached) {
-  llvm::errs() << "eStateInvalid RunPrivateStateThread\n";
+  llvm::errs() << "eStateExited RunPrivateStateThread\n";
     }
  //}
 
@@ -4213,6 +4224,7 @@ void Process::ProcessEventData::DoOnRemoval(Event *event_ptr) {
     // Use the public resume method here, since this is just extending a
     // public resume.
     process_sp->PrivateResume();
+llvm::errs() << "AFTER PrivateResume DoOnRemoval\n";
   } else {
     bool hijacked = process_sp->IsHijackedForEvent(eBroadcastBitStateChanged) &&
                     !process_sp->StateChangedIsHijackedForSynchronousResume();
@@ -5055,6 +5067,7 @@ Process::RunThreadPlan(ExecutionContext &exe_ctx,
         if (do_resume) {
           num_resumes++;
           Status resume_error = PrivateResume();
+llvm::errs() << "AFTER PrivateResume ThreadHandler\n";
           if (!resume_error.Success()) {
             diagnostic_manager.Printf(
                 eDiagnosticSeverityError,

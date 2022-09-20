@@ -234,6 +234,7 @@ GDBRemoteCommunication::ReadPacket(StringExtractorGDBRemote &response,
     //if (result != PacketResult::Success ||
       //  (response.GetResponseType() != ResponseType::eAck &&
         // response.GetResponseType() != ResponseType::eNack))
+      llvm::errs() << "END GDBRemoteCommunication::ReadPacket\n";
       return result;
     //LLDB_LOG(log, "discarding spurious `{0}` packet", response.GetStringRef());
   //}
@@ -255,6 +256,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
   }
   //bool timed_out = false;
   //bool disconnected = false;
+  int sleep_count = 0;
   while (IsConnected()) {// && !timed_out) {
     lldb::ConnectionStatus status = eConnectionStatusNoConnection;
 
@@ -272,7 +274,16 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
       llvm::errs() << "\n";
       if (CheckForPacket(buffer, bytes_read, packet) != PacketType::Invalid)
         return PacketResult::Success;
+    } else {
+        llvm::errs() << "!!!! READ = 0\n";
+        if (status == eConnectionStatusTimedOut || sleep_count == 50) {
+            llvm::errs() << "TIMEOUT !!!!\n";
+	    Disconnect();
+            return PacketResult::ErrorDisconnected;
+        }
     }
+    sleep_count++;
+    
     llvm::errs() << "AFTER CheckPacket WHILE\n";
 /* else {
       switch (status) {

@@ -93,11 +93,11 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
       llvm::errs() << "Success - SendContinuePacketAndWaitForResponse\n";
       break;
     default:
-llvm::errs() << "DEFAULT PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";
-        continue;
+llvm::errs() << "DEFAULT (disconnected) PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";
+        //continue;
       //LLDB_LOGF(log, "GDBRemoteClientBase::%s () ReadPacket(...) => false",
         //        __FUNCTION__);
-      //return eStateInvalid;
+      return eStateInvalid;
     }
     if (response.Empty()) {
 llvm::errs() << "response EMPTY PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";

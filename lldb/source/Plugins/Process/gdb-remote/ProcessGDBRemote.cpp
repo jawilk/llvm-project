@@ -1405,7 +1405,7 @@ Status ProcessGDBRemote::DoResume() {
                              continue_packet.GetSize()));
 
       // Call async "thread" directly
-      ProcessGDBRemote::AsyncThread(this);
+      error = ProcessGDBRemote::AsyncThread(this);
 
 
       /*if (!listener_sp->GetEvent(event_sp, std::chrono::seconds(5))) {
@@ -1421,7 +1421,7 @@ Status ProcessGDBRemote::DoResume() {
       }*/
     }
   //} // if (listener_sp->...
-  llvm::errs() << "END ProcessGDBRemote::DoResume\n";
+  llvm::errs() << "**** END ProcessGDBRemote::DoResume error: " << error.AsCString() << "\n";
   return error;
 }
 
@@ -3549,7 +3549,7 @@ void ProcessGDBRemote::DebuggerInitialize(Debugger &debugger) {
 }
 
 bool ProcessGDBRemote::StartAsyncThread() {
-  Log *log = GetLog(GDBRLog::Process);
+  /*Log *log = GetLog(GDBRLog::Process);
 
   LLDB_LOGF(log, "ProcessGDBRemote::%s ()", __FUNCTION__);
 
@@ -3572,7 +3572,7 @@ bool ProcessGDBRemote::StartAsyncThread() {
               "ProcessGDBRemote::%s () - Called when Async thread was "
               "already running.",
               __FUNCTION__);
-
+*/
   return m_async_thread.IsJoinable();
 }
 
@@ -3598,10 +3598,12 @@ void ProcessGDBRemote::StopAsyncThread() {
         __FUNCTION__);
 }
 
-thread_result_t ProcessGDBRemote::AsyncThread(void *arg) {
+bool is_exit = false;
+Status ProcessGDBRemote::AsyncThread(void *arg) {
     llvm::errs() << "ProcessGDBRemote::AsyncStub\n";
     ProcessGDBRemote *process = (ProcessGDBRemote *)arg;
     EventSP event_sp;
+    Status error;
 
     if (process->m_async_listener_sp->GetEvent(event_sp, llvm::None)) {
 	  llvm::errs() << "IS EVENT ProcessGDBRemote::AsyncThread\n";
@@ -3673,25 +3675,33 @@ thread_result_t ProcessGDBRemote::AsyncThread(void *arg) {
 		          }
 		        }
 		        process->SetExitStatus(exit_status, desc_string.c_str());
-		        break;
+                        error.SetErrorToGenericError();
+	  llvm::errs() << "END eStateExited ProcessGDBRemote::AsyncThread\n";
+                        is_exit = true;
+                        return error;
+		        //break;
 		      }
 		      case eStateInvalid: {
-	  llvm::errs() << "eStateInvalid ProcessGDBRemote::AsyncThread\n";
+	  llvm::errs() << "eStateInvalid (disconnected) ProcessGDBRemote::AsyncThread\n";
 		        // Check to see if we were trying to attach and if we got back
 		        // the "E87" error code from debugserver -- this indicates that
 		        // the process is not debuggable.  Return a slightly more
 		        // helpful error message about why the attach failed.
-		        if (::strstr(continue_cstr, "vAttach") != nullptr &&
+		        /*if (::strstr(continue_cstr, "vAttach") != nullptr &&
 		            response.GetError() == 0x87) {
 		          process->SetExitStatus(-1, "cannot attach to process due to "
 		                                     "System Integrity Protection");
 		        } else if (::strstr(continue_cstr, "vAttach") != nullptr &&
 		                   response.GetStatus().Fail()) {
 		          process->SetExitStatus(-1, response.GetStatus().AsCString());
-		        } else {
+		        } else {*/
 		          process->SetExitStatus(-1, "lost connection");
-		        }
-		        break;
+		        //}
+                        error.SetErrorToGenericError();
+	  llvm::errs() << "END eStateInvalid (disconnected) ProcessGDBRemote::AsyncThread\n";
+                        is_exit = true;
+                        return error;
+		        //break;
 		      }
 
 		      default:
@@ -3721,7 +3731,9 @@ thread_result_t ProcessGDBRemote::AsyncThread(void *arg) {
 		}
 	      }
 	    }
-  return {};
+  if (is_exit)
+      error.SetErrorToGenericError();
+  return error;
 }
 
 /*thread_result_t ProcessGDBRemote::AsyncThread(void *arg) {

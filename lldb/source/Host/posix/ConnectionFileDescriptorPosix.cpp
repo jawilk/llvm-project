@@ -280,6 +280,8 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
   if (status != eConnectionStatusSuccess)
     return 0;*/
 
+  Status error;
+  int sleep_count = 0;
   int res;
   fd_set fdr;
   FD_ZERO(&fdr);
@@ -287,17 +289,21 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
   res = select(m_io_sp->GetWaitableHandle()+1, &fdr, NULL, NULL, NULL);
   while (!FD_ISSET(m_io_sp->GetWaitableHandle(), &fdr)) {
      #if defined(__EMSCRIPTEN__)
-          llvm::errs() << "SLEEEEEP ConnectionFileDescriptor::Read\n";
-          emscripten_sleep(0);
+          llvm::errs() << "SLEEEEEP ConnectionFileDescriptor::Read count: " << sleep_count << "\n";
+          emscripten_sleep(sleep_count);
+          sleep_count++;
       #endif
       FD_ZERO(&fdr);
       FD_SET(m_io_sp->GetWaitableHandle(), &fdr);
       res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdr, NULL, NULL);
       if (res == -1)
           llvm::errs() << "READ SOCKET SELECT FAILED\n";
+      if (sleep_count == 50) {
+          status = eConnectionStatusTimedOut;
+          return 0;
+      }
   }
 
-  Status error;
   size_t bytes_read = dst_len;
   error = m_io_sp->Read(dst, bytes_read);
 

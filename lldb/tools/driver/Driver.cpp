@@ -52,6 +52,7 @@ extern "C" {
     EMSCRIPTEN_KEEPALIVE void request_next();
     EMSCRIPTEN_KEEPALIVE void request_stepIn();
     EMSCRIPTEN_KEEPALIVE void request_stepOut();
+    EMSCRIPTEN_KEEPALIVE int request_continue();
 }
 
 class LLDBSentry {
@@ -142,6 +143,19 @@ void request_stepOut() {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
     g_vsc.target.GetProcess().GetSelectedThread().StepOut();
+}
+
+// -1 to indicate the process has terminated.
+int request_continue() {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+
+    SBError error;
+    error = g_vsc.target.GetProcess().Continue();
+    if (!error.Success()) {
+        execute_command("kill");
+        return -1;
+    }
+    return 0;
 }
 
 const char* request_source(char* const json) {

@@ -569,6 +569,7 @@ SBError SBProcess::Continue() {
   } else
     sb_error.SetErrorString("SBProcess is invalid");
 
+  llvm::errs() << "END contiune ERROR: " <<  sb_error.GetCString() << "\n";
   return sb_error;
 }
 

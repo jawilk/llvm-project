@@ -90,8 +90,9 @@ ConnectionStatus Communication::Connect(const char *url, Status *error_ptr) {
 }
 
 ConnectionStatus Communication::Disconnect(Status *error_ptr) {
-  LLDB_LOG(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION),
-           "{0} Communication::Disconnect ()", this);
+  llvm::errs() << "Communication::Disconnect\n";
+  //LLDB_LOG(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION),
+    //       "{0} Communication::Disconnect ()", this);
 
   assert((!m_read_thread_enabled || m_read_thread_did_exit) &&
          "Disconnecting while the read thread is running is racy!");
