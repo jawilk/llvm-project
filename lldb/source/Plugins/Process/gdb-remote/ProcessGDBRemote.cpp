@@ -385,10 +385,10 @@ void ProcessGDBRemote::BuildDynamicRegisterInfo(bool force) {
   // Check if qHostInfo specified a specific packet timeout for this
   // connection. If so then lets update our setting so the user knows what the
   // timeout is and can see it.
-  const auto host_packet_timeout = m_gdb_comm.GetHostDefaultPacketTimeout();
+  /*const auto host_packet_timeout = m_gdb_comm.GetHostDefaultPacketTimeout();
   if (host_packet_timeout > std::chrono::seconds(0)) {
     GetGlobalPluginProperties().SetPacketTimeout(host_packet_timeout.count());
-  }
+  }*/
 
   // Register info search order:
   //     1 - Use the target definition python file if one is specified.
@@ -397,7 +397,7 @@ void ProcessGDBRemote::BuildDynamicRegisterInfo(bool force) {
   //     3 - Fall back on the qRegisterInfo packets.
   //     4 - Use hardcoded defaults if available.
 
-  FileSpec target_definition_fspec =
+  /*FileSpec target_definition_fspec =
       GetGlobalPluginProperties().GetTargetDefinitionFile();
   if (!FileSystem::Instance().Exists(target_definition_fspec)) {
     // If the filename doesn't exist, it may be a ~ not having been expanded -
@@ -413,7 +413,7 @@ void ProcessGDBRemote::BuildDynamicRegisterInfo(bool force) {
       stream_sp->Printf("ERROR: target description file %s failed to parse.\n",
                         target_definition_fspec.GetPath().c_str());
     }
-  }
+  }*/
 
   const ArchSpec &target_arch = GetTarget().GetArchitecture();
   const ArchSpec &remote_host_arch = m_gdb_comm.GetHostArchitecture();
@@ -429,16 +429,19 @@ void ProcessGDBRemote::BuildDynamicRegisterInfo(bool force) {
   if (!arch_to_use.IsValid())
     arch_to_use = target_arch;
 
-  if (GetGDBServerRegisterInfo(arch_to_use))
-    return;
+  //if (GetGDBServerRegisterInfo(arch_to_use))
+    //return;
 
   char packet[128];
   std::vector<DynamicRegisterInfo::Register> registers;
   uint32_t reg_num = 0;
-  for (StringExtractorGDBRemote::ResponseType response_type =
-           StringExtractorGDBRemote::eResponse;
-       response_type == StringExtractorGDBRemote::eResponse; ++reg_num) {
-    const int packet_len =
+  uint32_t MAX_REGS = 13;
+  char* REG_NAMES[MAX_REGS] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "sp", "pc", "remaining" };
+  // for (StringExtractorGDBRemote::ResponseType response_type =
+  //          StringExtractorGDBRemote::eResponse;
+  //      response_type == StringExtractorGDBRemote::eResponse; ++reg_num) {
+  for (uint32_t reg_num=0; reg_num<MAX_REGS; reg_num++) {
+    /*const int packet_len =
         ::snprintf(packet, sizeof(packet), "qRegisterInfo%x", reg_num);
     assert(packet_len < (int)sizeof(packet));
     UNUSED_IF_ASSERT_DISABLED(packet_len);
@@ -446,67 +449,77 @@ void ProcessGDBRemote::BuildDynamicRegisterInfo(bool force) {
     if (m_gdb_comm.SendPacketAndWaitForResponse(packet, response) ==
         GDBRemoteCommunication::PacketResult::Success) {
       response_type = response.GetResponseType();
-      if (response_type == StringExtractorGDBRemote::eResponse) {
+      if (response_type == StringExtractorGDBRemote::eResponse) {*/
         llvm::StringRef name;
         llvm::StringRef value;
         DynamicRegisterInfo::Register reg_info;
+        reg_info.name.SetString(REG_NAMES[reg_num]);
+        reg_info.byte_size = 8;
+        reg_info.byte_offset = reg_num * 8;
+        reg_info.encoding = lldb::eEncodingUint;;
+        reg_info.format = eFormatHex;
+        reg_info.set_name.SetString("General Purpose Registers");
+        if (reg_num == 10)
+          reg_info.regnum_generic = Args::StringToGenericRegister("sp");
+        else if (reg_num == 11)
+          reg_info.regnum_generic = Args::StringToGenericRegister("pc");
 
-        while (response.GetNameColonValue(name, value)) {
-          if (name.equals("name")) {
-            reg_info.name.SetString(value);
-          } else if (name.equals("alt-name")) {
-            reg_info.alt_name.SetString(value);
-          } else if (name.equals("bitsize")) {
-            if (!value.getAsInteger(0, reg_info.byte_size))
-              reg_info.byte_size /= CHAR_BIT;
-          } else if (name.equals("offset")) {
-            value.getAsInteger(0, reg_info.byte_offset);
-          } else if (name.equals("encoding")) {
-            const Encoding encoding = Args::StringToEncoding(value);
-            if (encoding != eEncodingInvalid)
-              reg_info.encoding = encoding;
-          } else if (name.equals("format")) {
-            if (!OptionArgParser::ToFormat(value.str().c_str(), reg_info.format, nullptr)
-                    .Success())
-              reg_info.format =
-                  llvm::StringSwitch<Format>(value)
-                      .Case("binary", eFormatBinary)
-                      .Case("decimal", eFormatDecimal)
-                      .Case("hex", eFormatHex)
-                      .Case("float", eFormatFloat)
-                      .Case("vector-sint8", eFormatVectorOfSInt8)
-                      .Case("vector-uint8", eFormatVectorOfUInt8)
-                      .Case("vector-sint16", eFormatVectorOfSInt16)
-                      .Case("vector-uint16", eFormatVectorOfUInt16)
-                      .Case("vector-sint32", eFormatVectorOfSInt32)
-                      .Case("vector-uint32", eFormatVectorOfUInt32)
-                      .Case("vector-float32", eFormatVectorOfFloat32)
-                      .Case("vector-uint64", eFormatVectorOfUInt64)
-                      .Case("vector-uint128", eFormatVectorOfUInt128)
-                      .Default(eFormatInvalid);
-          } else if (name.equals("set")) {
-            reg_info.set_name.SetString(value);
-          } else if (name.equals("gcc") || name.equals("ehframe")) {
-            value.getAsInteger(0, reg_info.regnum_ehframe);
-          } else if (name.equals("dwarf")) {
-            value.getAsInteger(0, reg_info.regnum_dwarf);
-          } else if (name.equals("generic")) {
-            reg_info.regnum_generic = Args::StringToGenericRegister(value);
-          } else if (name.equals("container-regs")) {
-            SplitCommaSeparatedRegisterNumberString(value, reg_info.value_regs, 16);
-          } else if (name.equals("invalidate-regs")) {
-            SplitCommaSeparatedRegisterNumberString(value, reg_info.invalidate_regs, 16);
-          }
-        }
+        //while (response.GetNameColonValue(name, value)) {
+          //if (name.equals("name")) {
+            // reg_info.name.SetString(REG_NAMES[reg_num]);
+          // } else if (name.equals("alt-name")) {
+          //   reg_info.alt_name.SetString(value);
+          // } else if (name.equals("bitsize")) {
+          //   if (!value.getAsInteger(0, reg_info.byte_size))
+          //     reg_info.byte_size /= CHAR_BIT;
+          // } else if (name.equals("offset")) {
+          //   value.getAsInteger(0, reg_info.byte_offset);
+          // } else if (name.equals("encoding")) {
+          //   const Encoding encoding = Args::StringToEncoding(value);
+            // if (encoding != eEncodingInvalid)
+            //   reg_info.encoding = encoding;
+          // } else if (name.equals("format")) {
+          //   if (!OptionArgParser::ToFormat(value.str().c_str(), reg_info.format, nullptr)
+          //           .Success())
+          //     reg_info.format =
+          //         llvm::StringSwitch<Format>(value)
+          //             .Case("binary", eFormatBinary)
+          //             .Case("decimal", eFormatDecimal)
+          //             .Case("hex", eFormatHex)
+          //             .Case("float", eFormatFloat)
+          //             .Case("vector-sint8", eFormatVectorOfSInt8)
+          //             .Case("vector-uint8", eFormatVectorOfUInt8)
+          //             .Case("vector-sint16", eFormatVectorOfSInt16)
+          //             .Case("vector-uint16", eFormatVectorOfUInt16)
+          //             .Case("vector-sint32", eFormatVectorOfSInt32)
+          //             .Case("vector-uint32", eFormatVectorOfUInt32)
+          //             .Case("vector-float32", eFormatVectorOfFloat32)
+          //             .Case("vector-uint64", eFormatVectorOfUInt64)
+          //             .Case("vector-uint128", eFormatVectorOfUInt128)
+          //             .Default(eFormatInvalid);
+          // } else if (name.equals("set")) {
+          //   reg_info.set_name.SetString(value);
+          // } else if (name.equals("gcc") || name.equals("ehframe")) {
+          //   value.getAsInteger(0, reg_info.regnum_ehframe);
+          // } else if (name.equals("dwarf")) {
+          //   value.getAsInteger(0, reg_info.regnum_dwarf);
+          // } else if (name.equals("generic")) {
+          //   reg_info.regnum_generic = Args::StringToGenericRegister(value);
+          // } else if (name.equals("container-regs")) {
+          //   SplitCommaSeparatedRegisterNumberString(value, reg_info.value_regs, 16);
+          // } else if (name.equals("invalidate-regs")) {
+          //   SplitCommaSeparatedRegisterNumberString(value, reg_info.invalidate_regs, 16);
+          // }
+        //}
 
         assert(reg_info.byte_size != 0);
         registers.push_back(reg_info);
-      } else {
-        break; // ensure exit before reg_num is incremented
-      }
-    } else {
-      break;
-    }
+      // } else {
+      //   break; // ensure exit before reg_num is incremented
+      // }
+    // } else {
+    //   break;
+    // }
   }
 
   if (registers.empty())
