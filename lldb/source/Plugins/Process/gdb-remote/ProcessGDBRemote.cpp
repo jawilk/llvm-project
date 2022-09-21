@@ -432,11 +432,11 @@ void ProcessGDBRemote::BuildDynamicRegisterInfo(bool force) {
   //if (GetGDBServerRegisterInfo(arch_to_use))
     //return;
 
-  char packet[128];
+  //char packet[128];
   std::vector<DynamicRegisterInfo::Register> registers;
-  uint32_t reg_num = 0;
-  uint32_t MAX_REGS = 13;
-  char* REG_NAMES[MAX_REGS] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "sp", "pc", "remaining" };
+  //uint32_t reg_num = 0;
+  const uint32_t MAX_REGS = 13;
+  const char* REG_NAMES[MAX_REGS] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "sp", "pc", "remaining" };
   // for (StringExtractorGDBRemote::ResponseType response_type =
   //          StringExtractorGDBRemote::eResponse;
   //      response_type == StringExtractorGDBRemote::eResponse; ++reg_num) {
@@ -450,8 +450,8 @@ void ProcessGDBRemote::BuildDynamicRegisterInfo(bool force) {
         GDBRemoteCommunication::PacketResult::Success) {
       response_type = response.GetResponseType();
       if (response_type == StringExtractorGDBRemote::eResponse) {*/
-        llvm::StringRef name;
-        llvm::StringRef value;
+        //llvm::StringRef name;
+        //llvm::StringRef value;
         DynamicRegisterInfo::Register reg_info;
         reg_info.name.SetString(REG_NAMES[reg_num]);
         reg_info.byte_size = 8;
