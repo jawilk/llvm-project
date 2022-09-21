@@ -460,9 +460,10 @@ void ProcessGDBRemote::BuildDynamicRegisterInfo(bool force) {
         reg_info.format = eFormatHex;
         reg_info.set_name.SetString("General Purpose Registers");
         if (reg_num == 10)
-          reg_info.regnum_generic = Args::StringToGenericRegister("sp");
+          reg_info.regnum_generic = LLDB_REGNUM_GENERIC_SP;
         else if (reg_num == 11)
-          reg_info.regnum_generic = Args::StringToGenericRegister("pc");
+          reg_info.regnum_generic = LLDB_REGNUM_GENERIC_PC;
+        reg_info.regnum_dwarf = reg_num;
 
         //while (response.GetNameColonValue(name, value)) {
           //if (name.equals("name")) {
