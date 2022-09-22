@@ -63,7 +63,7 @@ llvm::json::Value VSCode::CreateTopLevelScopes() {
   scopes.emplace_back(CreateScope("Locals", VARREF_LOCALS,
                                   g_vsc.variables.locals.GetSize(), false));
   scopes.emplace_back(CreateScope("Globals", VARREF_GLOBALS,
-                                  g_vsc.variables.globals.GetSize(), false));
+                                  g_vsc.variables.globals.GetSize(), true));
   scopes.emplace_back(CreateScope("Registers", VARREF_REGS,
                                   g_vsc.variables.registers.GetSize(), false));
   return llvm::json::Value(std::move(scopes));

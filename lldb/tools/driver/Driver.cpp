@@ -53,6 +53,7 @@ extern "C" {
     EMSCRIPTEN_KEEPALIVE int request_stepIn();
     EMSCRIPTEN_KEEPALIVE int request_stepOut();
     EMSCRIPTEN_KEEPALIVE int request_continue();
+    EMSCRIPTEN_KEEPALIVE void request_terminate();
 }
 
 class LLDBSentry {
@@ -71,7 +72,19 @@ public:
 static LLDBSentry sentry;
 char PUBKEY[PUBKEY_LEN];
 
-// JSON
+int main() {
+    std::cout << "LLDB - init main()\n";
+
+    // Create debugger instance
+    g_vsc.debugger = SBDebugger::Create();
+    g_vsc.debugger.SetAsync(true);
+
+    std::cout << "END LLDB - INIT main() c++\n";
+    
+    return 0;
+}
+
+// API helper (JSON)
 void read_JSON(std::string json, llvm::json::Object &object) {
         std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     llvm::StringRef json_sref(json);
@@ -97,18 +110,6 @@ const char* build_JSON_str(const llvm::json::Value &json) {
   return strdup(strm.str().c_str());
 }
 
-int main() {
-    std::cout << "LLDB - INIT main() c++\n";
-
-    // Create debugger instance
-    g_vsc.debugger = SBDebugger::Create();
-    g_vsc.debugger.SetAsync(false);
-
-    std::cout << "END LLDB - INIT main() c++\n";
-    
-    return 0;
-}
-
 // API
 void execute_command(const char* input) {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << input << "\n";
@@ -126,6 +127,12 @@ void create_target(const char* path) {
     g_vsc.target = g_vsc.debugger.CreateTarget(path, arch, platform, add_dependent_libs, error);
 }
 
+void request_terminate() {
+    g_vsc.debugger.SetAsync(false);
+    g_vsc.target.GetProcess().Kill();
+    g_vsc.debugger.SetAsync(true);
+}
+
 int should_terminate(SBError error) {
    if (!error.Success()) {
         execute_command("kill");
@@ -134,16 +141,37 @@ int should_terminate(SBError error) {
     return 0;
 }
 
-void till_next_line(uint32_t before, SBError error) {
+int till_next_line_next(uint32_t before, SBError error) {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     uint32_t func_start, now;
     func_start = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetStartAddress().GetLineEntry().GetLine();
     now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
-    cout << "before: " << before << " func_start: " << func_start << " now: " << now << "\n";
+
     while ((now == func_start || now == before) && should_terminate(error) == 0) {
-        g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, error);
+        cout << "before: " << before << " func_start: " << func_start << " now: " << now << "\n";
+        if (!g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().IsValid()) {
+            cout << "NO LINE INFO AVAILABLE!\n";
+            break;
+       } 
+       g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, error);
         now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
     }
+    return should_terminate(error);
+}
+
+int till_not_def_step_in(SBError error) {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+    int error_rec = should_terminate(error);
+    uint32_t func_start, now;
+
+    if (!g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().IsValid())
+        return error_rec;
+
+    func_start = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetStartAddress().GetLineEntry().GetLine();
+    now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
+    if (now == func_start && error_rec == 0)
+        error_rec = request_stepIn();
+    return error_rec;
 }
 
 int request_next() {
@@ -151,8 +179,7 @@ int request_next() {
     SBError error;
     uint32_t before = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
     g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, error);
-    till_next_line(before, error);
-    return should_terminate(error);
+    return till_next_line_next(before, error);
 }
 
 int request_stepIn() {
@@ -160,7 +187,7 @@ int request_stepIn() {
 
     SBError error;
     g_vsc.target.GetProcess().GetSelectedThread().StepInto(nullptr, LLDB_INVALID_LINE_NUMBER, error, eOnlyThisThread);
-    return should_terminate(error);
+    return till_not_def_step_in(error);
 }
 
 int request_stepOut() {
