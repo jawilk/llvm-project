@@ -298,7 +298,7 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
       res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdr, NULL, NULL);
       if (res == -1)
           llvm::errs() << "READ SOCKET SELECT FAILED\n";
-      if (sleep_count == 50) {
+      if (sleep_count == 100) {
           status = eConnectionStatusTimedOut;
           return 0;
       }

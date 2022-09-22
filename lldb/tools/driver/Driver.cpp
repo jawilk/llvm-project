@@ -31,8 +31,7 @@
 #include <iostream>
 
 
-#define MAX_REGS 13
-#define PATH_LEN 128
+#define PUBKEY_LEN 32
 
 using namespace lldb;
 using namespace lldb_vscode;
@@ -45,6 +44,7 @@ extern "C" {
     EMSCRIPTEN_KEEPALIVE void execute_command(const char* input);
     EMSCRIPTEN_KEEPALIVE void create_target(const char* path);
     EMSCRIPTEN_KEEPALIVE const char* request_variables(char* const json);
+    EMSCRIPTEN_KEEPALIVE const char* request_pubkey(char* const name);
     EMSCRIPTEN_KEEPALIVE const char* request_scopes(char* const json);
     EMSCRIPTEN_KEEPALIVE const char* request_setBreakpoints(char* const json);
     EMSCRIPTEN_KEEPALIVE const char* request_stackTrace(char* const json);
@@ -68,9 +68,8 @@ public:
 };
 
 // Emscripten globals
-//SBDebugger debugger;
 static LLDBSentry sentry;
-//VSCode g_vsc;
+char PUBKEY[PUBKEY_LEN];
 
 // JSON
 void read_JSON(std::string json, llvm::json::Object &object) {
@@ -135,11 +134,24 @@ int should_terminate(SBError error) {
     return 0;
 }
 
-int request_next() {
+void till_next_line(uint32_t before, SBError error) {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+    uint32_t func_start, now;
+    func_start = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetStartAddress().GetLineEntry().GetLine();
+    now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
+    cout << "before: " << before << " func_start: " << func_start << " now: " << now << "\n";
+    while ((now == func_start || now == before) && should_terminate(error) == 0) {
+        g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, error);
+        now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
+    }
+}
 
+int request_next() {
+        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     SBError error;
+    uint32_t before = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
     g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, error);
+    till_next_line(before, error);
     return should_terminate(error);
 }
 
@@ -349,6 +361,19 @@ const char* request_setBreakpoints(char* const json) {
   cout << "END setBreakpoints: " << response.getString("type").getValue().data() << "\n";
 
   return build_JSON_str(llvm::json::Value(std::move(response)));
+}
+
+const char* request_pubkey(char* const name) {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << name << "\n";
+
+    SBError error;
+    memset(PUBKEY, 0, PUBKEY_LEN);
+    SBData p = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().EvaluateExpression(name).GetPointeeData();
+    for (int i=0; i<PUBKEY_LEN; i++)
+        PUBKEY[i] = p.GetUnsignedInt8(error, i);
+
+    std::cout << "END LLDB WASM call - " << __FUNCTION__ << ": " << PUBKEY << "\n";
+    return PUBKEY;
 }
 
 const char* request_variables(char* const json) {
