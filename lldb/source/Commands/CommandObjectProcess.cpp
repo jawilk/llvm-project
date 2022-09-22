@@ -785,7 +785,6 @@ public:
 
 protected:
   bool DoExecute(Args &command, CommandReturnObject &result) override {
-    llvm::errs() << "DoExecute CommandObjectProcessConnect\n";
     if (command.GetArgumentCount() != 1) {
       result.AppendErrorWithFormat(
           "'%s' takes exactly one argument:\nUsage: %s\n", m_cmd_name.c_str(),
@@ -819,11 +818,9 @@ protected:
                   result.GetOutputStream(), debugger.GetSelectedTarget().get(),
                   error);
     if (error.Fail() || process_sp == nullptr) {
-    llvm::errs() << "ERROR DoExecute CommandObjectProcessConnect\n";
       result.AppendError(error.AsCString("Error connecting to the process"));
       return false;
     }
-    llvm::errs() << "END DoExecute CommandObjectProcessConnect\n";
     return true;
   }
 

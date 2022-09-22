@@ -491,7 +491,6 @@ bool SBThread::GetInfoItemByPathAsString(const char *path, SBStream &strm) {
 
 SBError SBThread::ResumeNewPlan(ExecutionContext &exe_ctx,
                                 ThreadPlan *new_plan) {
-  llvm::errs() << "SBThread::ResumeNewPlan\n";
   SBError sb_error;
 
   Process *process = exe_ctx.GetProcessPtr();
@@ -515,7 +514,6 @@ SBError SBThread::ResumeNewPlan(ExecutionContext &exe_ctx,
 
   // Why do we need to set the current thread by ID here???
   process->GetThreadList().SetSelectedThreadByID(thread->GetID());
-  llvm::errs() << "-----------!!!! IS NOT SYNCHRONOUS: " << process->GetTarget().GetDebugger().GetAsyncExecution() << "\n";
   if (process->GetTarget().GetDebugger().GetAsyncExecution())
     sb_error.ref() = process->Resume();
   else

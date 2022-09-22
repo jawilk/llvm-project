@@ -367,7 +367,6 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
 
     return 0;
   }*/
-  llvm::errs() << "END ConnectionFileDescriptor::Read bytes_read: " << bytes_read << "\n";
   return bytes_read;
 }
 
@@ -396,7 +395,6 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
   }
 
   Status error;
-  llvm::errs() << "m_io_sp->GetWaitableHandle(): " << m_io_sp->GetWaitableHandle() << "\n";
   int res;
   fd_set fdw;
   FD_ZERO(&fdw);
@@ -404,14 +402,13 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
   res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdw, NULL, NULL);
   while (!FD_ISSET(m_io_sp->GetWaitableHandle(), &fdw)) {
      #if defined(__EMSCRIPTEN__)
-          llvm::errs() << "SLEEEEEP ConnectionFileDescriptor::Write\n";
           emscripten_sleep(0);
       #endif
       FD_ZERO(&fdw);
       FD_SET(m_io_sp->GetWaitableHandle(), &fdw);
       res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdw, NULL, NULL);
       if (res == -1)
-          llvm::errs() << "WRITE SOCKET SELECT FAILED\n";
+          llvm::errs() << "ERROR: WRITE SOCKET SELECT FAILED\n";
   }
   size_t bytes_sent = src_len;
   error = m_io_sp->Write(src, bytes_sent);

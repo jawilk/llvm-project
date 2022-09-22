@@ -78,7 +78,6 @@ char stack_trace_ret[512];
 
 // JSON
 void read_JSON(std::string json, llvm::json::Object &object) {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     llvm::StringRef json_sref(json);
 
     llvm::Expected<llvm::json::Value> json_value = llvm::json::parse(json_sref);
@@ -86,13 +85,10 @@ void read_JSON(std::string json, llvm::json::Object &object) {
     object = *json_value->getAsObject();
 
     const auto command = GetString(object, "command");
-    cout << "got JSON command: " << command.data() << "\n";
 }
 
 // Serialize the JSON value into a string.
 const char* build_JSON_str(const llvm::json::Value &json) {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-  std::string s;
   llvm::raw_string_ostream strm(s);
   strm << json;
       
@@ -111,7 +107,7 @@ const string project_vscode = "vscode-test-web:///";
 const string solana_sdk_vscode = "vscode-test-web:///sdk/program";
 const string rust_core_vscode = "vscode-test-web:///rust-solana-1.59.0/library";
 int main() {
-    std::cout << "LLDB - INIT main() c++\n";
+    std::cout << "LLDB - inti main()\n";
 
     LLDBSentry sentry;
 
@@ -124,14 +120,10 @@ int main() {
 
 // API
 void execute_command(const char* input) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << input << "\n";
-
     debugger.HandleCommand(input);
 }
 
 void create_target(const char* path) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << path << "\n";
-
     SBError error;
     const char *arch = NULL;
     const char *platform = NULL;
@@ -140,8 +132,6 @@ void create_target(const char* path) {
 }
 
 char* get_registers() {
-        std::cout << "LLDB - get_registers()\n";
-
         SBValueList registers;
         std::string registers_value_str;
 
@@ -155,8 +145,6 @@ char* get_registers() {
     }
 
 char* get_locals() {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
     lldb::SBValueList local_vars;
     int len;
     std::string locals_value_str;
@@ -187,8 +175,6 @@ char* get_locals() {
 }
 
 char* get_func_args() {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
     lldb::SBValueList args;
     int len;
     std::string arguments_value_str;
@@ -228,9 +214,7 @@ char* split_end(char* str, const char* sub_str) {
 }
 
 char* get_stack_trace() {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
-        lldb::SBFrame frame;
+  lldb::SBFrame frame;
 	uint32_t line;
 	const char* func_name;
 	string file_path;
@@ -275,17 +259,13 @@ char* get_stack_trace() {
     }
 
 void set_breakpoint(const char* file, uint32_t line) {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-    
-        g_vsc.debugger.GetSelectedTarget().BreakpointCreateByLocation(file, line);
+    g_vsc.debugger.GetSelectedTarget().BreakpointCreateByLocation(file, line);
 }
 
 // VSCODE API
 const char* request_scopes(char* const json) {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
   llvm::json::Object request;
   llvm::json::Object response;
-  cout << "JSON str: " << json << "\n";
   read_JSON(json, request);
 
   FillResponse(request, response);
@@ -309,8 +289,6 @@ const char* request_scopes(char* const json) {
   body.try_emplace("scopes", g_vsc.CreateTopLevelScopes());
   response.try_emplace("body", std::move(body));
 
-  cout << "END scopes: " << response.getString("type").getValue().data() << "\n";
-
   return build_JSON_str(llvm::json::Value(std::move(response)));
 }
 
@@ -329,7 +307,6 @@ lldb::SBValueList *GetTopLevelScope(int64_t variablesReference) {
 }
 
 void request_variables(char* const json) {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
   llvm::json::Object request;
   llvm::json::Object response;
 

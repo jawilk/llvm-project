@@ -481,7 +481,6 @@ llvm::json::Value CreateSource(lldb::SBLineEntry &line_entry) {
 llvm::json::Value CreateSource(llvm::StringRef source_path) {
   llvm::json::Object source;
   llvm::StringRef name = llvm::sys::path::filename(source_path);
-  llvm::errs() << "CreateSource name: " << name << "\n";
   EmplaceSafeString(source, "name", name);
   EmplaceSafeString(source, "path", source_path);
   return llvm::json::Value(std::move(source));

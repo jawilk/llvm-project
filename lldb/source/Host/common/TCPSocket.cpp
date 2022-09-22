@@ -159,15 +159,11 @@ Status TCPSocket::CreateSocket(int domain) {
 }
 
 Status TCPSocket::Connect(llvm::StringRef name) {
-  llvm::errs() << "-- TCPSocket::Connect\n";
-
   Status error;
   llvm::Expected<HostAndPort> host_port = DecodeHostAndPort(name);
   if (!host_port)
     return Status(host_port.takeError());
 
-  llvm::errs() << "HOST: " << host_port->hostname << " PORT: " << host_port->port << "\n";
-  llvm::errs() << "to c str: " << host_port->hostname.c_str() << "\n";
   /*std::vector<SocketAddress> addresses =
       SocketAddress::GetAddressInfo(host_port->hostname.c_str(), nullptr,
                                     AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP);*/
@@ -217,7 +213,6 @@ Status TCPSocket::Connect(llvm::StringRef name) {
     }*/
 
     //SetOptionNoDelay();
-    llvm::errs() << "-- END TCPSocket::Connect\n";
     error.Clear();
     return error;
   /*}

@@ -646,7 +646,6 @@ StateType Process::WaitForProcessToStop(const Timeout<std::micro> &timeout,
                                         EventSP *event_sp_ptr, bool wait_always,
                                         ListenerSP hijack_listener_sp,
                                         Stream *stream, bool use_run_lock) {
-  llvm::errs() << "Process::WaitForProcessToStop\n";
   // We can't just wait for a "stopped" event, because the stopped event may
   // have restarted the target. We have to actually check each event, and in
   // the case of a stopped event check the restarted flag on the event.
@@ -689,14 +688,12 @@ StateType Process::WaitForProcessToStop(const Timeout<std::micro> &timeout,
     case eStateDetached:
     case eStateExited:
     case eStateUnloaded:
-  llvm::errs() << "eStateExited Process::WaitForProcessToStop\n";
       // We need to toggle the run lock as this won't get done in
       // SetPublicState() if the process is hijacked.
       if (hijack_listener_sp && use_run_lock)
         m_public_run_lock.SetStopped();
       return state;
     case eStateStopped:
-  llvm::errs() << "eStateStopped Process::WaitForProcessToStop\n";
       if (Process::ProcessEventData::GetRestartedFromEvent(event_sp.get()))
         continue;
       else {
@@ -1019,7 +1016,6 @@ Process::GetStateChangedEventsPrivate(EventSP &event_sp,
 bool Process::GetEventsPrivate(EventSP &event_sp,
                                const Timeout<std::micro> &timeout,
                                bool control_only) {
-  llvm::errs() << "Process::GetEventsPrivate\n";
   //Log *log(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_PROCESS));
   //LLDB_LOG(log, "timeout = {0}, event_sp)...", timeout);
 
@@ -1051,7 +1047,6 @@ const char *Process::GetExitDescription() {
 }
 
 bool Process::SetExitStatus(int status, const char *cstr) {
-  llvm::errs() << "Process::SetExitStatus\n";
   // Use a mutex to protect setting the exit status.
   std::lock_guard<std::mutex> guard(m_exit_status_mutex);
 
@@ -1084,7 +1079,6 @@ bool Process::SetExitStatus(int status, const char *cstr) {
   
   // Allow subclasses to do some cleanup
   DidExit();
-  llvm::errs() << "END Process::SetExitStatus\n";
   return true;
 }
 
@@ -1113,7 +1107,6 @@ bool Process::SetProcessExitStatus(
     int signo,      // Zero for no signal
     int exit_status // Exit value of process if signal is zero
     ) {
-  llvm::errs() << "Process::SetProcessExitStatus\n";
   /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_PROCESS));
   LLDB_LOGF(log,
             "Process::SetProcessExitStatus (pid=%" PRIu64
@@ -1304,7 +1297,6 @@ StateType Process::GetState() {
 }
 
 void Process::SetPublicState(StateType new_state, bool restarted) {
-  llvm::errs() << "Process::SetPublicState\n";
   const bool new_state_is_stopped = StateIsStoppedState(new_state, false);
   if (new_state_is_stopped) {
     // This will only set the time if the public stop time has no value, so
@@ -1346,7 +1338,6 @@ void Process::SetPublicState(StateType new_state, bool restarted) {
 }
 
 Status Process::Resume() {
-  llvm::errs() << " Process::Resume\n";
   /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_STATE |
                                                   LIBLLDB_LOG_PROCESS));
   LLDB_LOGF(log, "Process::Resume -- locking run lock");
@@ -1356,20 +1347,16 @@ Status Process::Resume() {
     return error;
   }*/
   Status error = PrivateResume();
-  llvm::errs() << "AFTER PrivateResume ERROR: " << error.AsCString() << "\n";
   if (!error.Success()) {
-  llvm::errs() << "AFTER PrivateResume NOT success\n";
     // Undo running state change
     m_public_run_lock.SetStopped();
   }
-  llvm::errs() << "AFTER PrivateResume SUCCESS\n";
   return error;
 }
 
 static const char *g_resume_sync_name = "lldb.Process.ResumeSynchronous.hijack";
 
 Status Process::ResumeSynchronous(Stream *stream) {
-  llvm::errs() << "Process::ResumeSynchronous\n";
   /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_STATE |
                                                   LIBLLDB_LOG_PROCESS));
   LLDB_LOGF(log, "Process::ResumeSynchronous -- locking run lock");*/
@@ -1384,12 +1371,9 @@ Status Process::ResumeSynchronous(Stream *stream) {
   HijackProcessEvents(listener_sp);
 
   Status error = PrivateResume();
-    llvm::errs() << "AFTER PrivateResume() Process::ResumeSynchronous\n";
   if (error.Success()) {
-    llvm::errs() << "RESUME success Process::ResumeSynchronous\n";
     StateType state = WaitForProcessToStop(llvm::None, nullptr, true,
                                            listener_sp, stream);
-    llvm::errs() << "After WaitForProcessToStop Process::ResumeSynchronous\n";
     const bool must_be_alive =
         false; // eStateExited is ok, so this must be false
     if (!StateIsStoppedState(state, must_be_alive))
@@ -1397,15 +1381,12 @@ Status Process::ResumeSynchronous(Stream *stream) {
           "process not in stopped state after synchronous resume: %s",
           StateAsCString(state));
   } else {
-    llvm::errs() << "RESUME NO success Process::ResumeSynchronous\n";
     // Undo running state change
     m_public_run_lock.SetStopped();
   }
 
   // Undo the hijacking of process events...
   RestoreProcessEvents();
-  llvm::errs() << "END     4   Process::ResumeSynchronous\n";
-  llvm::errs() << "Error (if any): " << error.AsCString() << "\n";
   return error;
 }
 
@@ -1432,7 +1413,6 @@ bool Process::StateChangedIsHijackedForSynchronousResume() {
 StateType Process::GetPrivateState() { return m_private_state.GetValue(); }
 
 void Process::SetPrivateState(StateType new_state) {
-  llvm::errs() << "Process::SetPrivateState\n";
   if (m_finalizing)
     return;
 
@@ -1491,7 +1471,6 @@ void Process::SetPrivateState(StateType new_state) {
       //        "Process::SetPrivateState (%s) state didn't change. Ignoring...",
               //StateAsCString(new_state));
   }
-  llvm::errs() << "END Process::SetPrivateState\n";
 }
 
 void Process::SetRunningUserExpression(bool on) {
@@ -2426,7 +2405,6 @@ Status Process::DisableWatchpoint(Watchpoint *watchpoint, bool notify) {
 StateType
 Process::WaitForProcessStopPrivate(EventSP &event_sp,
                                    const Timeout<std::micro> &timeout) {
-  llvm::errs() << "Process::WaitForProcessStopPrivate\n";
   StateType state;
 
   //while (true) {
@@ -2443,7 +2421,6 @@ Process::WaitForProcessStopPrivate(EventSP &event_sp,
     if (event_sp)
       HandlePrivateEvent(event_sp);
   //}
-llvm::errs() << "END Process::WaitForProcessStopPrivate\n";
   return state;
 }
 
@@ -2673,7 +2650,6 @@ Process::AttachCompletionHandler::AttachCompletionHandler(Process *process,
 
 Process::NextEventAction::EventActionResult
 Process::AttachCompletionHandler::PerformAction(lldb::EventSP &event_sp) {
-  llvm::errs() << "Process::AttachCompletionHandler::PerformAction\n";
   Log *log(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_PROCESS));
 
   StateType state = ProcessEventData::GetStateFromEvent(event_sp.get());
@@ -2875,9 +2851,7 @@ void Process::CompleteAttach() {
   // before we go looking for a dynamic loader plug-in.
   ArchSpec process_arch;
   DidAttach(process_arch);
-  llvm::errs() << "AFTER DidAttach Process::CompleteAttach\n";
   if (process_arch.IsValid()) {
-  llvm::errs() << "process_arch IsValid() Process::CompleteAttach\n";
     GetTarget().SetArchitecture(process_arch);
     if (log) {
       const char *triple_str = process_arch.GetTriple().getTriple().c_str();
@@ -2894,16 +2868,13 @@ void Process::CompleteAttach() {
   PlatformSP platform_sp(GetTarget().GetPlatform());
   assert(platform_sp);
   if (platform_sp) {
-  llvm::errs() << "IS platform_sp Process::CompleteAttach\n";
     const ArchSpec &target_arch = GetTarget().GetArchitecture();
     if (target_arch.IsValid() &&
         !platform_sp->IsCompatibleArchitecture(target_arch, false, nullptr)) {
-  llvm::errs() << "target_arch isValid and not IsCompatibleArchitecture Process::CompleteAttach\n";
       ArchSpec platform_arch;
       platform_sp =
           platform_sp->GetPlatformForArchitecture(target_arch, &platform_arch);
       if (platform_sp) {
-  llvm::errs() << "IS platform_sp2 Process::CompleteAttach\n";
         GetTarget().SetPlatform(platform_sp);
         GetTarget().SetArchitecture(platform_arch);
         LLDB_LOGF(log,
@@ -2913,7 +2884,6 @@ void Process::CompleteAttach() {
                   platform_arch.GetTriple().getTriple().c_str());
       }
     } else if (!process_arch.IsValid()) {
-  llvm::errs() << "ELSE platform_sp2 Process::CompleteAttach\n";
       ProcessInstanceInfo process_info;
       GetProcessInfo(process_info);
       const ArchSpec &process_arch = process_info.GetArchitecture();
@@ -2921,7 +2891,6 @@ void Process::CompleteAttach() {
       if (process_arch.IsValid() &&
           target_arch.IsCompatibleMatch(process_arch) &&
           !target_arch.IsExactMatch(process_arch)) {
-  llvm::errs() << "ELSE IsValid platform_sp2 Process::CompleteAttach\n";
         GetTarget().SetArchitecture(process_arch);
         LLDB_LOGF(log,
                   "Process::%s switching architecture to %s based on info "
@@ -2931,7 +2900,6 @@ void Process::CompleteAttach() {
       }
     }
   }
-  llvm::errs() << "Finished attach Process::CompleteAttach\n";
   // We have completed the attach, now it is time to find the dynamic loader
   // plug-in
   DynamicLoader *dyld = GetDynamicLoader();
@@ -2997,7 +2965,6 @@ void Process::CompleteAttach() {
 }
 
 Status Process::ConnectRemote(llvm::StringRef remote_url) {
-  llvm::errs() << "Process::ConnectRemote\n";
   m_abi_sp.reset();
   m_process_input_reader.reset();
 
@@ -3009,16 +2976,13 @@ Status Process::ConnectRemote(llvm::StringRef remote_url) {
     if (GetID() != LLDB_INVALID_PROCESS_ID) {
       EventSP event_sp;
       StateType state = WaitForProcessStopPrivate(event_sp, llvm::None);
-  llvm::errs() << "AFTER WaitForProcessStopPrivate Process::ConnectRemote\n";
       if (state == eStateStopped || state == eStateCrashed) {
         // If we attached and actually have a process on the other end, then
         // this ended up being the equivalent of an attach.
         CompleteAttach();
-  llvm::errs() << "AFTER CompleteAttach Process::ConnectRemote\n";
         // This delays passing the stopped event to listeners till
         // CompleteAttach gets a chance to complete...
         HandlePrivateEvent(event_sp);
-  llvm::errs() << "AFTER HandlePrivateEvent Process::ConnectRemote\n";
     // Once TODO: remove bool arg
 std::shared_ptr<EventDataReceipt> event_receipt_sp(new EventDataReceipt());
     m_private_state_control_broadcaster.BroadcastEvent(eBroadcastInternalStateControlResume,
@@ -3033,12 +2997,10 @@ std::shared_ptr<EventDataReceipt> event_receipt_sp(new EventDataReceipt());
     else
       StartPrivateStateThread();*/
   }
-  llvm::errs() << "END Process::ConnectRemote\n";
   return error;
 }
 
 Status Process::PrivateResume() {
-  llvm::errs() << "Process::PrivateResume\n";
   /*Log *log(lldb_private::GetLogIfAnyCategoriesSet(LIBLLDB_LOG_PROCESS |
                                                   LIBLLDB_LOG_STEP));
   LLDB_LOGF(log,
@@ -3062,7 +3024,6 @@ Status Process::PrivateResume() {
     // signal in lldb::Thread::GetResumeSignal() to see if they are supposed to
     // start back up with a signal.
     if (m_thread_list.WillResume()) {
-  llvm::errs() << "m_thread_list.WillResume() Process::PrivateResume\n";
       // Last thing, do the PreResumeActions.
       if (!RunPreResumeActions()) {
         error.SetErrorString(
@@ -3071,18 +3032,15 @@ Status Process::PrivateResume() {
         m_mod_id.BumpResumeID();
         error = DoResume();
         if (error.Success()) {
-  llvm::errs() << "**** DoResume SUCCESS Process::PrivateResume\n";
           DidResume();
           m_thread_list.DidResume();
           //LLDB_LOGF(log, "Process thinks the process has resumed.");
         } else {
-          llvm::errs() << "**** (disconnected) Process::PrivateResume() DoResume failed.\n";
           //LLDB_LOGF(log, "Process::PrivateResume() DoResume failed.");
           return error;
         }
       }
     } else {
-  llvm::errs() << "Somebody wanted to run without running Process::PrivateResume\n";
       // Somebody wanted to run without running (e.g. we were faking a step
       // from one frame of a set of inlined frames that share the same PC to
       // another.)  So generate a continue & a stopped event, and let the world
@@ -3095,10 +3053,9 @@ Status Process::PrivateResume() {
       SetPrivateState(eStateStopped);
       RunPrivateStateThread(false);
     }
-  } else
+  } //else
     //LLDB_LOGF(log, "Process::PrivateResume() got an error \"%s\".",
       //        error.AsCString("<unknown error>"));
-  llvm::errs() << "END Process::PrivateResume\n";
   return error;
 }
 
@@ -3355,7 +3312,6 @@ uint32_t Process::GetAddressByteSize() const {
 }
 
 bool Process::ShouldBroadcastEvent(Event *event_ptr) {
-  llvm::errs() << "Process::ShouldBroadcastEvent\n";
   const StateType state =
       Process::ProcessEventData::GetStateFromEvent(event_ptr);
   bool return_value = true;
@@ -3366,7 +3322,6 @@ bool Process::ShouldBroadcastEvent(Event *event_ptr) {
   case eStateDetached:
   case eStateExited:
   case eStateUnloaded:
-llvm::errs() << "eStateExited ShouldBroadcastEvent\n";
     m_stdio_communication.SynchronizeWithReadThread();
     m_stdio_communication.StopReadThread();
     m_stdio_communication.Disconnect();
@@ -3478,7 +3433,6 @@ llvm::errs() << "eStateExited ShouldBroadcastEvent\n";
                     static_cast<void *>(event_ptr), StateAsCString(state));*/
           ProcessEventData::SetRestartedInEvent(event_ptr, true);
           PrivateResume();
-llvm::errs() << "AFTER PrivateResume ShouldBroadcastEvent\n";
         }
       } else {
         return_value = true;
@@ -3641,7 +3595,6 @@ void Process::SendAsyncInterrupt() {
 }
 
 void Process::HandlePrivateEvent(EventSP &event_sp) {
-  llvm::errs() << "Process::HandlePrivateEvent\n";
   m_resume_requested = false;
 
   const StateType new_state =
@@ -3651,15 +3604,12 @@ void Process::HandlePrivateEvent(EventSP &event_sp) {
   const bool should_broadcast = ShouldBroadcastEvent(event_sp.get());
 
   if (should_broadcast) {
-    llvm::errs() << "IS should_broadcast Process::HandlePrivateEvent\n";
 
     Process::ProcessEventData::SetUpdateStateOnRemoval(event_sp.get());
     BroadcastEvent(event_sp);
 
-    llvm::errs() << "AFTER BroadcastEvent Process::HandlePrivateEvent\n";
   } 
 
-  llvm::errs() << "END Process::HandlePrivateEvent\n";
 }
 
 /*void Process::HandlePrivateEvent(EventSP &event_sp) {
@@ -3809,43 +3759,33 @@ bool control_only = true;
 //bool exit_now = false;
 bool interrupt_requested = false;
 thread_result_t Process::RunPrivateStateThread(bool blah) {
-    llvm::errs() << "START Process::RunPrivateStateThread control_only: " << control_only << "\n";
     /*bool done = false;
 while(!done) {*/
     EventSP event_sp;
     GetEventsPrivate(event_sp, llvm::None, control_only);
-llvm::errs() << "AFTER GetEventsPrivate Process::RunPrivateStateThread control_only: " << control_only << "\n";
     //done = true;
     if (event_sp->BroadcasterIs(&m_private_state_control_broadcaster)) {
-      llvm::errs() << "IS m_private_state_control_broadcaster RunPrivateStateThread\n";
       switch (event_sp->GetType()) {
 	      case eBroadcastInternalStateControlStop:
-	  llvm::errs() << "eBroadcastInternalStateControlStop RunPrivateStateThread\n";
 		//exit_now = true;
 		break; // doing any internal state management below
 
 	      case eBroadcastInternalStateControlPause:
-	  llvm::errs() << "eBroadcastInternalStateControlPause RunPrivateStateThread\n";
 		control_only = true;
 		break;
 
 	      case eBroadcastInternalStateControlResume:
-	  llvm::errs() << "eBroadcastInternalStateControlResume RunPrivateStateThread\n";
 		control_only = false;
 		break;
 	      } // Switch
- llvm::errs() << "BEFORE return in m_private_state_control_broadcaster PrivateStateThread\n";
       return {};
 
     } // If broadcaster_type
   else if (event_sp->GetType() == eBroadcastBitInterrupt) {
-  llvm::errs() << "IS eBroadcastBitInterrupt RunPrivateStateThread\n";
       if (m_public_state.GetValue() == eStateAttaching) {
-  llvm::errs() << "IS eBroadcastBitInterrupt eStateAttaching\n";
         
         //BroadcastEvent(eBroadcastBitInterrupt, nullptr);
       } else if (StateIsRunningState(m_last_broadcast_state)) {
-  llvm::errs() << "StateIsRunningState m_last_broadcast_state RunPrivateStateThread\n";
         
         Status error = HaltPrivate();
         // Halt should generate a stopped event. Make a note of the fact that
@@ -3855,7 +3795,6 @@ llvm::errs() << "AFTER GetEventsPrivate Process::RunPrivateStateThread control_o
         // stop.
         interrupt_requested = true;
       } else {
-  llvm::errs() << "IS else RunPrivateStateThread\n";
         // This can happen when someone (e.g. Process::Halt) sees that we are
         // running and sends an interrupt request, but the process actually
         // stops before we receive it. In that case, we can just ignore the
@@ -3870,7 +3809,6 @@ llvm::errs() << "AFTER GetEventsPrivate Process::RunPrivateStateThread control_o
         Process::ProcessEventData::GetStateFromEvent(event_sp.get());
 
     if (internal_state != eStateInvalid) {
-  llvm::errs() << "internal_state != eStateInvalid RunPrivateStateThread\n";
       if (m_clear_thread_plans_on_stop &&
           StateIsStoppedState(internal_state, true)) {
         m_clear_thread_plans_on_stop = false;
@@ -3878,7 +3816,6 @@ llvm::errs() << "AFTER GetEventsPrivate Process::RunPrivateStateThread control_o
       }
 
       if (interrupt_requested) {
-  llvm::errs() << "interrupt_requested RunPrivateStateThread\n";
         if (StateIsStoppedState(internal_state, true)) {
           // We requested the interrupt, so mark this as such in the stop event
           // so clients can tell an interrupted process from a natural stop
@@ -3886,19 +3823,15 @@ llvm::errs() << "AFTER GetEventsPrivate Process::RunPrivateStateThread control_o
           interrupt_requested = false;
         }
       }
-  llvm::errs() << "BEFORE HandlePrivateEvent RunPrivateStateThread\n";
       HandlePrivateEvent(event_sp);
-  llvm::errs() << "AFTER HandlePrivateEvent RunPrivateStateThread\n";
       //done = false;
     }
 
-    if (internal_state == eStateInvalid || internal_state == eStateExited ||
-        internal_state == eStateDetached) {
-  llvm::errs() << "eStateExited RunPrivateStateThread\n";
-    }
+    // if (internal_state == eStateInvalid || internal_state == eStateExited ||
+    //     internal_state == eStateDetached) {
+    // }
  //}
 
-  llvm::errs() << "END RunPrivateStateThread\n";
   return {};
 }
 
@@ -4172,7 +4105,6 @@ bool Process::ProcessEventData::ShouldStop(Event *event_ptr,
 }
 
 void Process::ProcessEventData::DoOnRemoval(Event *event_ptr) {
-  llvm::errs() << "Process::ProcessEventData::DoOnRemoval\n";
   ProcessSP process_sp(m_process_wp.lock());
 
   if (!process_sp)
@@ -4224,7 +4156,6 @@ void Process::ProcessEventData::DoOnRemoval(Event *event_ptr) {
     // Use the public resume method here, since this is just extending a
     // public resume.
     process_sp->PrivateResume();
-llvm::errs() << "AFTER PrivateResume DoOnRemoval\n";
   } else {
     bool hijacked = process_sp->IsHijackedForEvent(eBroadcastBitStateChanged) &&
                     !process_sp->StateChangedIsHijackedForSynchronousResume();
@@ -4274,9 +4205,7 @@ Process::ProcessEventData::GetProcessFromEvent(const Event *event_ptr) {
 }
 
 StateType Process::ProcessEventData::GetStateFromEvent(const Event *event_ptr) {
-  llvm::errs() << "Process::ProcessEventData::GetStateFromEvent\n";
   const ProcessEventData *data = GetEventDataFromEvent(event_ptr);
-  llvm::errs() << "END Process::ProcessEventData::GetStateFromEvent\n";
   if (data == nullptr)
     return eStateInvalid;
   else
@@ -5067,7 +4996,6 @@ Process::RunThreadPlan(ExecutionContext &exe_ctx,
         if (do_resume) {
           num_resumes++;
           Status resume_error = PrivateResume();
-llvm::errs() << "AFTER PrivateResume ThreadHandler\n";
           if (!resume_error.Success()) {
             diagnostic_manager.Printf(
                 eDiagnosticSeverityError,

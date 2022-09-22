@@ -79,7 +79,6 @@ GDBRemoteCommunicationClient::~GDBRemoteCommunicationClient() {
 }
 
 bool GDBRemoteCommunicationClient::HandshakeWithServer(Status *error_ptr) {
-  llvm::errs() << "GDBRemoteCommunicationClient::HandshakeWithServer\n";
   ResetDiscoverableSettings(false);
 
   // Start the read thread after we send the handshake ack since if we fail to
@@ -322,7 +321,6 @@ void GDBRemoteCommunicationClient::ResetDiscoverableSettings(bool did_exec) {
 }
 
 void GDBRemoteCommunicationClient::GetRemoteQSupported() {
-  llvm::errs() << "GDBRemoteCommunicationClient::GetRemoteQSupported\n";
   // Clear out any capabilities we expect to see in the qSupported response
   m_supports_qXfer_auxv_read = eLazyBoolNo;
   m_supports_qXfer_libraries_read = eLazyBoolNo;
@@ -410,7 +408,6 @@ void GDBRemoteCommunicationClient::GetRemoteQSupported() {
 }
 
 bool GDBRemoteCommunicationClient::GetThreadSuffixSupported() {
-  llvm::errs() << "GDBRemoteCommunicationClient::GetThreadSuffixSupported\n";
   if (m_supports_thread_suffix == eLazyBoolCalculate) {
     StringExtractorGDBRemote response;
     m_supports_thread_suffix = eLazyBoolNo;
@@ -694,7 +691,6 @@ bool GDBRemoteCommunicationClient::GetxPacketSupported() {
 }
 
 lldb::pid_t GDBRemoteCommunicationClient::GetCurrentProcessID(bool allow_lazy) {
-  llvm::errs() << "GDBRemoteCommunicationClient::GetCurrentProcessID\n";
   if (allow_lazy && m_curr_pid_is_valid == eLazyBoolYes)
     return m_curr_pid;
 
@@ -710,7 +706,6 @@ lldb::pid_t GDBRemoteCommunicationClient::GetCurrentProcessID(bool allow_lazy) {
     // the thread id, which newer debugserver and lldb-gdbserver stubs return
     // correctly.
     StringExtractorGDBRemote response;
-    llvm::errs() << "BEFORE send qC\n";
     if (SendPacketAndWaitForResponse("qC", response) == PacketResult::Success) {
       if (response.GetChar() == 'Q') {
         if (response.GetChar() == 'C') {
@@ -723,11 +718,9 @@ lldb::pid_t GDBRemoteCommunicationClient::GetCurrentProcessID(bool allow_lazy) {
         }
       }
     }
-    llvm::errs() << "AFTER send qC and wait for response\n";
     // If we don't get a response for $qC, check if $qfThreadID gives us a
     // result.
     if (m_curr_pid == LLDB_INVALID_PROCESS_ID) {
-    llvm::errs() << "AFTER send qC LLDB_INVALID_PROCESS_ID\n";
       bool sequence_mutex_unavailable;
       auto ids = GetCurrentProcessAndThreadIDs(sequence_mutex_unavailable);
       if (!ids.empty() && !sequence_mutex_unavailable) {
@@ -1161,7 +1154,6 @@ uint32_t GDBRemoteCommunicationClient::GetGDBServerProgramVersion() {
 }
 
 bool GDBRemoteCommunicationClient::GetDefaultThreadId(lldb::tid_t &tid) {
-  llvm::errs() << "GDBRemoteCommunicationClient::GetDefaultThreadId\n";
   StringExtractorGDBRemote response;
   if (SendPacketAndWaitForResponse("qC", response) != PacketResult::Success)
     return false;
@@ -2094,7 +2086,6 @@ bool GDBRemoteCommunicationClient::DecodeProcessInfoResponse(
 
 bool GDBRemoteCommunicationClient::GetProcessInfo(
     lldb::pid_t pid, ProcessInstanceInfo &process_info) {
-  llvm::errs() << "GDBRemoteCommunicationClient::GetProcessInfo\n";
   process_info.Clear();
 
   if (m_supports_qProcessInfoPID) {
@@ -4267,12 +4258,10 @@ void GDBRemoteCommunicationClient::OnRunPacketSent(bool first) {
 }
 
 bool GDBRemoteCommunicationClient::UsesNativeSignals() {
-  llvm::errs() << "GDBRemoteCommunicationClient::UsesNativeSignals\n";
   if (m_uses_native_signals == eLazyBoolCalculate)
     GetRemoteQSupported();
   if (m_uses_native_signals == eLazyBoolYes)
     return true;
-  llvm::errs() << "MID GDBRemoteCommunicationClient::UsesNativeSignals\n";
   // If the remote didn't indicate native-signal support explicitly,
   // check whether it is an old version of lldb-server.
   return GetThreadSuffixSupported();

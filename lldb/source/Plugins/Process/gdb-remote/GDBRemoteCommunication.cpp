@@ -97,7 +97,6 @@ char GDBRemoteCommunication::CalculcateChecksum(llvm::StringRef payload) {
 }
 
 size_t GDBRemoteCommunication::SendAck() {
-  llvm::errs() << "GDBRemoteCommunication::SendAck\n";
   //Log *log = GetLog(GDBRLog::Packets);
   ConnectionStatus status = eConnectionStatusSuccess;
   char ch = '+';
@@ -234,7 +233,6 @@ GDBRemoteCommunication::ReadPacket(StringExtractorGDBRemote &response,
     //if (result != PacketResult::Success ||
       //  (response.GetResponseType() != ResponseType::eAck &&
         // response.GetResponseType() != ResponseType::eNack))
-      llvm::errs() << "END GDBRemoteCommunication::ReadPacket\n";
       return result;
     //LLDB_LOG(log, "discarding spurious `{0}` packet", response.GetStringRef());
   //}
@@ -251,7 +249,6 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
 
   // Check for a packet from our cache first without trying any reading...
   if (CheckForPacket(nullptr, 0, packet) != PacketType::Invalid) {
-  llvm::errs() << "TOOK PACKET FROM CACHE !!!!!!!!!!!!!!!!!!!!!!!\n";
     return PacketResult::Success;  
   }
   //bool timed_out = false;
@@ -268,23 +265,16 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
               timeout, Communication::ConnectionStatusAsString(status), error,
               bytes_read);*/
     if (bytes_read > 0) {
-      llvm::errs() << "!!!! READ: ";
-      for (int i=0; i<bytes_read; i++)
-          llvm::errs() << buffer[i];
-      llvm::errs() << "\n";
       if (CheckForPacket(buffer, bytes_read, packet) != PacketType::Invalid)
         return PacketResult::Success;
     } else {
-        llvm::errs() << "!!!! READ = 0\n";
         if (status == eConnectionStatusTimedOut) {// || sleep_count == 50) {
-            llvm::errs() << "TIMEOUT !!!!\n";
-	    Disconnect();
+	          Disconnect();
             return PacketResult::ErrorDisconnected;
         }
     }
     // sleep_count++;
     
-    llvm::errs() << "AFTER CheckPacket WHILE\n";
 /* else {
       switch (status) {
       case eConnectionStatusTimedOut:
@@ -408,7 +398,6 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
     return PacketResult::ErrorReplyTimeout;
   }
   else*/
-  llvm::errs() << "END GDBRemoteCommunication::WaitForPacketNoLock\n";
   return PacketResult::ErrorReplyFailed;
 }
 
@@ -644,7 +633,6 @@ bool GDBRemoteCommunication::DecompressPacket() {
 GDBRemoteCommunication::PacketType
 GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
                                        StringExtractorGDBRemote &packet) {
-  llvm::errs() << "CheckForPacket - src_len: " << src_len << "!!!!!!!!\n";
   // Put the packet data into the buffer in a thread safe fashion
   std::lock_guard<std::recursive_mutex> guard(m_bytes_mutex);
 
@@ -672,11 +660,9 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
 
     // Size of packet before it is decompressed, for logging purposes
     size_t original_packet_size = m_bytes.size();
-    llvm::errs() << "m_bytes SIZE: " << original_packet_size << "\n";
     if (CompressionIsEnabled()) {
       if (!DecompressPacket()) {
         packet.Clear();
-    llvm::errs() << "EARLY RETURN decompr GDBRemoteCommunication::PacketType::Standard\n";
         return GDBRemoteCommunication::PacketType::Standard;
       }
     }
@@ -745,10 +731,8 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
 
     if (content_length == std::string::npos) {
       packet.Clear();
-      llvm::errs() << "return early PacketType::Invalid from CheckForPacket\n";
       return GDBRemoteCommunication::PacketType::Invalid;
     } else if (total_length > 0) {
-      llvm::errs() << "WE HAVE A VALID PACKET\n";
       // We have a valid packet...
       assert(content_length <= m_bytes.size());
       assert(total_length <= m_bytes.size());
@@ -820,16 +804,7 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
       // encoding in the process.
       std ::string packet_str =
           ExpandRLE(m_bytes.substr(content_start, content_end - content_start));
-      llvm::errs() << "PACKET !!!!!!!!!!!!!!!!!!!!!: " << packet_str << "\n"; 
       packet = StringExtractorGDBRemote(packet_str);
-
-     if (packet.Empty()) {
-        if (m_bytes.empty())
-             llvm::errs() << "M_BYTES EMPTY !!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-        llvm::errs() << "PACKET IS EMPTY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-     }
-     else
-        llvm::errs() << "PACKET IS NOT EMPTY !!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 
       if (m_bytes[0] == '$' || m_bytes[0] == '%') {
         assert(checksum_idx < m_bytes.size());
@@ -863,14 +838,12 @@ GDBRemoteCommunication::CheckForPacket(const uint8_t *src, size_t src_len,
 
       m_bytes.erase(0, total_length);
       packet.SetFilePos(0);
-  llvm::errs() << "BEFORE return normal CheckForPacket\n"; 
       if (isNotifyPacket)
         return GDBRemoteCommunication::PacketType::Notify;
       else
         return GDBRemoteCommunication::PacketType::Standard;
     }
   }
-  llvm::errs() << "END CheckForPacket return invalid !!!!!!!!!!!!!!!!!!!!!\n"; 
   packet.Clear();
   return GDBRemoteCommunication::PacketType::Invalid;
 }

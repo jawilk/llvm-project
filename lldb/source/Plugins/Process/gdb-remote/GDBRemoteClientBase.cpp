@@ -40,7 +40,6 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
     ContinueDelegate &delegate, const UnixSignals &signals,
     llvm::StringRef payload, std::chrono::seconds interrupt_timeout,
     StringExtractorGDBRemote &response) {
-  llvm::errs() << "GDBRemoteClientBase::SendContinuePacketAndWaitForResponse\n";
   //Log *log = GetLog(GDBRLog::Process);
   response.Clear();
 
@@ -50,7 +49,6 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
     m_should_stop = false;
   }
   ContinueLock cont_lock(*this);
-  llvm::errs() << "AFTER SENT continue packet GDBRemoteClientBase::SendContinuePacketAndWaitForResponse\n";
   //if (!cont_lock)
     //return eStateInvalid;
   OnRunPacketSent(true);
@@ -63,13 +61,11 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
                                                    kWakeupInterval);
   for (;;) {
     PacketResult read_result = ReadPacket(response, computed_timeout, false);
-    llvm::errs() << "AFTER ReadPacket in SendContinuePacketAndWaitForResponse\n";
     // Reset the computed_timeout to the default value in case we are going
     // round again.
     //computed_timeout = std::min(interrupt_timeout, kWakeupInterval);
     switch (read_result) {
     case PacketResult::ErrorReplyTimeout: {
-      llvm::errs() << "ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";
       /*std::lock_guard<std::mutex> lock(m_mutex);
       if (m_async_count == 0) {
         continue;
@@ -90,24 +86,20 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
       //break;
     }
     case PacketResult::Success:
-      llvm::errs() << "Success - SendContinuePacketAndWaitForResponse\n";
       break;
     default:
-llvm::errs() << "DEFAULT (disconnected) PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";
         //continue;
       //LLDB_LOGF(log, "GDBRemoteClientBase::%s () ReadPacket(...) => false",
         //        __FUNCTION__);
       return eStateInvalid;
     }
-    if (response.Empty()) {
-llvm::errs() << "response EMPTY PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse\n";
+    // if (response.Empty()) {
     //  return eStateInvalid;
-    }
+    // }
 
     const char stop_type = response.GetChar();
     //LLDB_LOGF(log, "GDBRemoteClientBase::%s () got packet: %s", __FUNCTION__,
       //        response.GetStringRef().data());
-llvm::errs() << "BEFORE stop_type PacketResult::ErrorReplyTimeout -  SendContinuePacketAndWaitForResponse - Type: " << stop_type << "\n";
 
     switch (stop_type) {
     case 'W':
@@ -200,7 +192,6 @@ GDBRemoteClientBase::SendPacketAndWaitForResponse(
                 "GDBRemoteClientBase::%s failed to get mutex, not sending "
                 "packet '%.*s'",
                 __FUNCTION__, int(payload.size()), payload.data());*/
-    llvm::errs() << "!!! NO LOCK SendPacketAndWaitForResponse\n";
     return PacketResult::ErrorSendFailed;
   }
 
@@ -321,7 +312,6 @@ void GDBRemoteClientBase::ContinueLock::unlock() {
 
 GDBRemoteClientBase::ContinueLock::LockResult
 GDBRemoteClientBase::ContinueLock::lock() {
-  llvm::errs() << "GDBRemoteClientBase::ContinueLock::lock\n";
   /*Log *log = GetLog(GDBRLog::Process);
   LLDB_LOGF(log, "GDBRemoteClientBase::ContinueLock::%s() resuming with %s",
             __FUNCTION__, m_comm.m_continue_packet.c_str());*/
@@ -342,7 +332,6 @@ GDBRemoteClientBase::ContinueLock::lock() {
   //lldbassert(!m_comm.m_is_running);
   m_comm.m_is_running = true;
   m_acquired = true;
-  llvm::errs() << "END GDBRemoteClientBase::ContinueLock::lock\n";
   return LockResult::Success;
 }
 

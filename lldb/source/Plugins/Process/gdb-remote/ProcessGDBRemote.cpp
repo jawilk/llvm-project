@@ -543,7 +543,6 @@ Status ProcessGDBRemote::WillAttachToProcessWithName(const char *process_name,
 }
 
 Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
-  llvm::errs() << "ProcessGDBRemote::DoConnectRemote\n";
   Log *log = GetLog(GDBRLog::Process);
 
   Status error(WillLaunchOrAttach());
@@ -551,19 +550,16 @@ Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
     return error;
 
   error = ConnectToDebugserver(remote_url);
-  llvm::errs() << "AFTER ConnectToDebugserver ProcessGDBRemote::DoConnectRemote\n";
   if (error.Fail())
     return error;
 
   //StartAsyncThread();
   lldb::pid_t pid = m_gdb_comm.GetCurrentProcessID();
-  llvm::errs() << "AFTER GetCurrentProcessID ProcessGDBRemote::DoConnectRemote\n";
   if (pid == LLDB_INVALID_PROCESS_ID) {
     // We don't have a valid process ID, so note that we are connected and
     // could now request to launch or attach, or get remote process listings...
     SetPrivateState(eStateConnected);
   } else {
-  llvm::errs() << "AFTER IS VALID ProcessGDBRemote::DoConnectRemote\n";
     // We have a valid process
     SetID(pid);
     GetThreadList();
@@ -668,10 +664,8 @@ Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
           }
         }
       }
-      llvm::errs() << "SetThreadStopInfo ProcessGDBRemote::DoConnectRemote\n";
       const StateType state = SetThreadStopInfo(response);
       if (state != eStateInvalid) {
-        llvm::errs() << "SetPrivateState ProcessGDBRemote::DoConnectRemote\n";
         SetPrivateState(state);
       } else
         error.SetErrorStringWithFormat(
@@ -710,7 +704,6 @@ Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
             ": normalized target architecture triple: %s",
             __FUNCTION__, GetID(),
             GetTarget().GetArchitecture().GetTriple().getTriple().c_str());
-  llvm::errs() << "END ProcessGDBRemote::DoConnectRemote\n";
   return error;
 }
 
@@ -976,7 +969,6 @@ Status ProcessGDBRemote::ConnectToDebugserver(llvm::StringRef connect_url) {
 }
 
 void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
-  llvm::errs() << "ProcessGDBRemote::DidLaunchOrAttach\n";
   Log *log = GetLog(GDBRLog::Process);
   BuildDynamicRegisterInfo(false);
 
@@ -1061,7 +1053,6 @@ void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
   }
 
   MaybeLoadExecutableModule();
-  llvm::errs() << "AFTER MaybeLoadExecutableModule DidLaunchOrAttach\n";
 
   // Find out which StructuredDataPlugins are supported by the debug monitor.
   // These plugins transmit data over async $J packets.
@@ -1072,10 +1063,8 @@ void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
   // If connected to LLDB ("native-signals+"), use signal defs for
   // the remote platform.  If connected to GDB, just use the standard set.
   if (!m_gdb_comm.UsesNativeSignals()) {
-  llvm::errs() << "is NOT UsesNativeSignals DidLaunchOrAttach\n";
     SetUnixSignals(std::make_shared<GDBRemoteSignals>());
   } else {
-  llvm::errs() << "is UsesNativeSignals DidLaunchOrAttach\n";
     PlatformSP platform_sp = GetTarget().GetPlatform();
     if (platform_sp && platform_sp->IsConnected())
       SetUnixSignals(platform_sp->GetUnixSignals());
@@ -1085,7 +1074,6 @@ void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
 }
 
 void ProcessGDBRemote::MaybeLoadExecutableModule() {
-  llvm::errs() << "ProcessGDBRemote::MaybeLoadExecutableModule\n";
   ModuleSP module_sp = GetTarget().GetExecutableModule();
   if (!module_sp)
     return;
@@ -1093,7 +1081,6 @@ void ProcessGDBRemote::MaybeLoadExecutableModule() {
   llvm::Optional<QOffsets> offsets = m_gdb_comm.GetQOffsets();
   if (!offsets)
     return;
-  llvm::errs() << "1ProcessGDBRemote::MaybeLoadExecutableModule\n";
   bool is_uniform =
       size_t(llvm::count(offsets->offsets, offsets->offsets[0])) ==
       offsets->offsets.size();
@@ -1104,7 +1091,6 @@ void ProcessGDBRemote::MaybeLoadExecutableModule() {
   module_sp->SetLoadAddress(GetTarget(), offsets->offsets[0],
                             /*value_is_offset=*/true, changed);
   if (changed) {
-  llvm::errs() << "changed ProcessGDBRemote::MaybeLoadExecutableModule\n";
     ModuleList list;
     list.Append(module_sp);
     m_process->GetTarget().ModulesDidLoad(list);
@@ -1210,14 +1196,12 @@ void ProcessGDBRemote::DidExit() {
 }
 
 void ProcessGDBRemote::DidAttach(ArchSpec &process_arch) {
-llvm::errs() << "ProcessGDBRemote::DidAttach\n";
   // If you can figure out what the architecture is, fill it in here.
   process_arch.Clear();
   DidLaunchOrAttach(process_arch);
 }
 
 Status ProcessGDBRemote::WillResume() {
-  llvm::errs() << "ProcessGDBRemote::WillResume\n";
   m_continue_c_tids.clear();
   m_continue_C_tids.clear();
   m_continue_s_tids.clear();
@@ -1228,7 +1212,6 @@ Status ProcessGDBRemote::WillResume() {
 }
 
 Status ProcessGDBRemote::DoResume() {
-  llvm::errs() << "ProcessGDBRemote::DoResume\n";
   Status error;
 
   /*ListenerSP listener_sp(
@@ -1435,7 +1418,6 @@ Status ProcessGDBRemote::DoResume() {
       }*/
     }
   //} // if (listener_sp->...
-  llvm::errs() << "**** END ProcessGDBRemote::DoResume error: " << error.AsCString() << "\n";
   return error;
 }
 
@@ -1664,7 +1646,6 @@ ThreadSP ProcessGDBRemote::SetThreadStopInfo(
                            // queue_serial are valid
     LazyBool associated_with_dispatch_queue, addr_t dispatch_queue_t,
     std::string &queue_name, QueueKind queue_kind, uint64_t queue_serial) {
-    llvm::errs() << "ProcessGDBRemote::SetThreadStopInfo\n";
   ThreadSP thread_sp;
   if (tid != LLDB_INVALID_THREAD_ID) {
     // Scope for "locker" below
@@ -2103,7 +2084,6 @@ ProcessGDBRemote::SetThreadStopInfo(StructuredData::Dictionary *thread_dict) {
 }
 
 StateType ProcessGDBRemote::SetThreadStopInfo(StringExtractor &stop_packet) {
-  llvm::errs() << "ProcessGDBRemote::SetThreadStopInfo\n";
   lldb::pid_t pid = m_gdb_comm.GetCurrentProcessID();
   stop_packet.SetFilePos(0);
   const char stop_type = stop_packet.GetChar();
@@ -3614,19 +3594,15 @@ void ProcessGDBRemote::StopAsyncThread() {
 
 bool is_exit = false;
 Status ProcessGDBRemote::AsyncThread(void *arg) {
-    llvm::errs() << "ProcessGDBRemote::AsyncStub\n";
     ProcessGDBRemote *process = (ProcessGDBRemote *)arg;
     EventSP event_sp;
     Status error;
 
     if (process->m_async_listener_sp->GetEvent(event_sp, llvm::None)) {
-	  llvm::errs() << "IS EVENT ProcessGDBRemote::AsyncThread\n";
 	      const uint32_t event_type = event_sp->GetType();
 	      if (event_sp->BroadcasterIs(&process->m_async_broadcaster)) {
-	  llvm::errs() << "IS m_async_broadcaster ProcessGDBRemote::AsyncThread\n";
 		switch (event_type) {
 		case eBroadcastBitAsyncContinue: {
-	  llvm::errs() << "eBroadcastBitAsyncContinue ProcessGDBRemote::AsyncThread\n";
 		  const EventDataBytes *continue_packet =
 		      EventDataBytes::GetEventDataFromEvent(event_sp.get());
 
@@ -3636,19 +3612,16 @@ Status ProcessGDBRemote::AsyncThread(void *arg) {
 		    const size_t continue_cstr_len = continue_packet->GetByteSize();
 
 		    if (::strstr(continue_cstr, "vAttach") == nullptr) {
-                      llvm::errs() << "BEFORE SetPrivateState1 AsyncThread\n";
 		      process->SetPrivateState(eStateRunning);
 		      // Call PrivateStateThread
 		      process->RunPrivateStateThread(false);
                     }
 		    StringExtractorGDBRemote response;
-                    llvm::errs() << "BEFORE send wait continue AsyncThread\n";
 		    StateType stop_state =
 		        process->GetGDBRemote().SendContinuePacketAndWaitForResponse(
 		            *process, *process->GetUnixSignals(),
 		            llvm::StringRef(continue_cstr, continue_cstr_len),
 		            process->GetInterruptTimeout(), response);
-                      llvm::errs() << "AFTER send wait continue AsyncThread\n";
 		      // We need to immediately clear the thread ID list so we are sure
 		      // to get a valid list of threads. The thread ID list might be
 		      // contained within the "response", or the stop reply packet that
@@ -3656,21 +3629,17 @@ Status ProcessGDBRemote::AsyncThread(void *arg) {
 		      // packet to the process using the
 		      // process->SetLastStopPacket()...
 		      process->ClearThreadIDList();
-	  llvm::errs() << "BEFORE stop_state switch ProcessGDBRemote::AsyncThread\n";
 		      switch (stop_state) {
 		    case eStateStopped:
 		    case eStateCrashed:
 		    case eStateSuspended:
-	  llvm::errs() << "eStateStopped ProcessGDBRemote::AsyncThread\n";
 		      process->SetLastStopPacket(response);
 		      process->SetPrivateState(stop_state);
 		      // Call PrivateStateThread
 		      process->RunPrivateStateThread(false);
-	  llvm::errs() << "AFTER RunPrivateStateThread ProcessGDBRemote::AsyncThread\n";
 		      break;
 
 		    case eStateExited: {
-	  llvm::errs() << "eStateExited ProcessGDBRemote::AsyncThread\n";
 		      process->SetLastStopPacket(response);
 		      process->ClearThreadIDList();
 		      response.SetFilePos(1);
@@ -3690,13 +3659,11 @@ Status ProcessGDBRemote::AsyncThread(void *arg) {
 		        }
 		        process->SetExitStatus(exit_status, desc_string.c_str());
                         error.SetErrorToGenericError();
-	  llvm::errs() << "END eStateExited ProcessGDBRemote::AsyncThread\n";
                         is_exit = true;
                         return error;
 		        //break;
 		      }
 		      case eStateInvalid: {
-	  llvm::errs() << "eStateInvalid (disconnected) ProcessGDBRemote::AsyncThread\n";
 		        // Check to see if we were trying to attach and if we got back
 		        // the "E87" error code from debugserver -- this indicates that
 		        // the process is not debuggable.  Return a slightly more
@@ -3712,7 +3679,6 @@ Status ProcessGDBRemote::AsyncThread(void *arg) {
 		          process->SetExitStatus(-1, "lost connection");
 		        //}
                         error.SetErrorToGenericError();
-	  llvm::errs() << "END eStateInvalid (disconnected) ProcessGDBRemote::AsyncThread\n";
                         is_exit = true;
                         return error;
 		        //break;

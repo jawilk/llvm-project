@@ -617,7 +617,6 @@ bool ThreadList::WillResume() {
 }
 
 void ThreadList::DidResume() {
-  llvm::errs() << "ThreadList::DidResume\n";
   std::lock_guard<std::recursive_mutex> guard(GetMutex());
   collection::iterator pos, end = m_threads.end();
   for (pos = m_threads.begin(); pos != end; ++pos) {

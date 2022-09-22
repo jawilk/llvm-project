@@ -90,7 +90,6 @@ ConnectionStatus Communication::Connect(const char *url, Status *error_ptr) {
 }
 
 ConnectionStatus Communication::Disconnect(Status *error_ptr) {
-  llvm::errs() << "Communication::Disconnect\n";
   //LLDB_LOG(lldb_private::GetLogIfAllCategoriesSet(LIBLLDB_LOG_COMMUNICATION),
     //       "{0} Communication::Disconnect ()", this);
 
@@ -192,24 +191,17 @@ size_t Communication::Write(const void *src, size_t src_len,
 
 size_t Communication::WriteAll(const void *src, size_t src_len,
                                ConnectionStatus &status, Status *error_ptr) {
-  llvm::errs() << "Communication::WriteAll --- Send packet: ";
-  for (size_t i=0; i<src_len; i++)
-      llvm::errs() << static_cast<const char *>(src)[i];
-  llvm::errs() << "\n";
   size_t total_written = 0;
   do {
     total_written += Write(static_cast<const char *>(src) + total_written,
                            src_len - total_written, status, error_ptr);
-    llvm::errs() << "total_written: " << total_written << "\n";
   //} while (status == eConnectionStatusSuccess && total_written < src_len);
   } while (total_written < src_len);
 
-  llvm::errs() << "END Communication::WriteAll";
   return total_written;
 }
 
 bool Communication::StartReadThread(Status *error_ptr) {
-  llvm::errs() << "START Communication::StartReadThread\n";
   if (error_ptr)
     error_ptr->Clear();
 

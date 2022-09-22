@@ -88,7 +88,6 @@ int main() {
 
 // API helper (JSON)
 void read_JSON(std::string json, llvm::json::Object &object) {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     llvm::StringRef json_sref(json);
 
     llvm::Expected<llvm::json::Value> json_value = llvm::json::parse(json_sref);
@@ -96,26 +95,30 @@ void read_JSON(std::string json, llvm::json::Object &object) {
     object = *json_value->getAsObject();
 
     const auto command = GetString(object, "command");
-    cout << "got JSON command: " << command.data() << "\n";
 }
 
 // Serialize the JSON value into a string.
 const char* build_JSON_str(const llvm::json::Value &json) {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
   std::string s;
   llvm::raw_string_ostream strm(s);
   strm << json;
       
-  cout << "SEND BACK JSON: " << strm.str() << "\n";
-
   // Needs to be free'd
   return strdup(strm.str().c_str());
 }
 
+int main() {
+    std::cout << "LLDB WASM - init main()\n";
+
+    // Create debugger instance
+    g_vsc.debugger = SBDebugger::Create();
+    g_vsc.debugger.SetAsync(true);
+
+    return 0;
+}
+
 // API
 const char* execute_command(const char* command) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << command << "\n";
-
     SBCommandReturnObject result;
     SBCommandInterpreter sb_interpreter = g_vsc.debugger.GetCommandInterpreter();
     sb_interpreter.HandleCommand(command, result, false);
@@ -123,8 +126,6 @@ const char* execute_command(const char* command) {
 }
 
 void create_target(const char* path) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << path << "\n";
-
     SBError error;
     const char *arch = NULL;
     const char *platform = NULL;
@@ -140,16 +141,13 @@ void request_terminate() {
 
 int should_terminate() {
    if (!g_error.Success()) {
-        cout << "************** CONTINUE NO SUCCESS\n";
         execute_command("kill");
         return -1;
     }
-    std::cout << "************** CONTINUE SUCCESS\n";
     return 0;
 }
 
 bool is_sol_log(string& sol_log_msg) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     if (g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().IsValid()) {
         if (g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().IsValid()) {
             string func_name = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetName();
@@ -160,7 +158,6 @@ bool is_sol_log(string& sol_log_msg) {
                 sol_log_msg += "sol_log_ -> ";
                 sol_log_msg.append(&(v.GetSummary()[1]), length);
                 sol_log_msg += "\n\n";
-                cout << "SOL_LOG: " << sol_log_msg << "\n";
                 return true;
             }
         }
@@ -169,15 +166,12 @@ bool is_sol_log(string& sol_log_msg) {
 }
 
 void till_next_line_next(uint32_t line_before, string& sol_log_msg) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     uint32_t func_start, now;
     func_start = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetStartAddress().GetLineEntry().GetLine();
     now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
 
     while ((now == func_start || now == line_before) && should_terminate() == 0) {
-        cout << "line_before: " << line_before << " func_start: " << func_start << " now: " << now << "\n";
         if (!g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().IsValid()) {
-            cout << "!!!! NO LINE INFO\n";
             break;
         }
         sol_log_msg.append(request_next());
@@ -186,7 +180,6 @@ void till_next_line_next(uint32_t line_before, string& sol_log_msg) {
 }
 
 void till_not_def_step_in(string& sol_log_msg) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     int error_rec = should_terminate();
     uint32_t func_start, now;
     if (!g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().IsValid())
@@ -198,7 +191,6 @@ void till_not_def_step_in(string& sol_log_msg) {
 }
 
 const char* request_next() {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     string sol_log_msg;
     uint32_t line_before;
     SBBreakpoint bp;
@@ -218,35 +210,22 @@ const char* request_next() {
 
 const char* request_stepIn() {
     string sol_log_msg = "";
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
     g_vsc.target.GetProcess().GetSelectedThread().StepInto(nullptr, LLDB_INVALID_LINE_NUMBER, g_error, eOnlyThisThread);
-    
     till_not_def_step_in(sol_log_msg);
     return strdup(sol_log_msg.c_str());
 }
 
 const char* request_stepOut() {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-    
     string sol_log_msg;
     g_vsc.target.GetProcess().GetSelectedThread().StepOut(g_error);
     return strdup(sol_log_msg.c_str());
 }
 
 const char* request_continue() {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
     string sol_log_msg;
     g_error = g_vsc.target.GetProcess().Continue();
-
     while (is_sol_log(sol_log_msg))
         g_error = g_vsc.target.GetProcess().Continue();
-
-    printf("ERROR request_continue: %s\n", g_error.GetCString());
-
-    cout << "END LLDB WASM call - " << __FUNCTION__ << "\n";
-
     return strdup(sol_log_msg.c_str());
 }
 
@@ -264,15 +243,12 @@ const char* request_source(char* const json) {
   auto sourceReference = GetSigned(source, "sourceReference", -1);
   auto pos = g_vsc.source_map.find((lldb::addr_t)sourceReference);
   if (pos != g_vsc.source_map.end()) {
-    llvm::errs() << "SOURCE CONTENTS: " << pos->second.content << "\n";
     EmplaceSafeString(body, "content", pos->second.content);
   } else {
     response["success"] = llvm::json::Value(false);
   }
   EmplaceSafeString(body, "mimeType", "text/x-lldb.disassembly");
   response.try_emplace("body", std::move(body));
-
-  cout << "END request_source: " << response.getString("type").getValue().data() << "\n";
 
   return build_JSON_str(llvm::json::Value(std::move(response)));
 }
@@ -290,11 +266,9 @@ const char* request_scopes(char* const json) {
   lldb::SBFrame frame = g_vsc.GetLLDBFrame(*arguments);
  
   if (frame.IsValid()) {
-cout << "!!!!!!! IS VALID THREAD\n";
     frame.GetThread().GetProcess().SetSelectedThread(frame.GetThread());
     frame.GetThread().SetSelectedFrame(frame.GetFrameID());
   }
-else { cout << "!!!!!!! IS _NOT_ VALID THREAD\n"; }
   g_vsc.variables.locals = frame.GetVariables(/*arguments=*/true,
                                               /*locals=*/true,
                                               /*statics=*/false,
@@ -306,8 +280,6 @@ else { cout << "!!!!!!! IS _NOT_ VALID THREAD\n"; }
   g_vsc.variables.registers = frame.GetRegisters();
   body.try_emplace("scopes", g_vsc.CreateTopLevelScopes());
   response.try_emplace("body", std::move(body));
-
-  cout << "END scopes: " << response.getString("type").getValue().data() << "\n";
 
   return build_JSON_str(llvm::json::Value(std::move(response)));
 }
@@ -326,7 +298,6 @@ lldb::SBValueList *GetTopLevelScope(int64_t variablesReference) {
 }
 
 const char* request_stackTrace(char* const json) {
-  llvm::errs() << "LLDB WASM call - " << __FUNCTION__ << "\n";
   llvm::json::Object request;
   llvm::json::Object response;
 
@@ -338,14 +309,11 @@ const char* request_stackTrace(char* const json) {
   lldb::SBThread thread = g_vsc.GetLLDBThread(*arguments);
   llvm::json::Array stackFrames;
   llvm::json::Object body;
-  llvm::errs() << "MID1 LLDB WASM call - " << __FUNCTION__ << "\n";
   if (thread.IsValid()) {
-  cout << "MID thread IS VALID request_stackTrace\n";
     const auto startFrame = GetUnsigned(arguments, "startFrame", 0);
     const auto levels = GetUnsigned(arguments, "levels", 0);
     const auto endFrame = (levels == 0) ? INT64_MAX : (startFrame + levels);
     for (uint32_t i = startFrame; i < endFrame; ++i) {
-      cout << "FRAME: " << i << "\n";
       auto frame = thread.GetFrameAtIndex(i);
       if (!frame.IsValid())
         break;
@@ -354,12 +322,8 @@ const char* request_stackTrace(char* const json) {
     const auto totalFrames = thread.GetNumFrames();
     body.try_emplace("totalFrames", totalFrames);
   }
-  else
-      cout << "MID thread IS NOT VALID request_stackTrace\n";
   body.try_emplace("stackFrames", std::move(stackFrames));
   response.try_emplace("body", std::move(body));
-
-  cout << "END request_stackTrace: " << response.getString("type").getValue().data() << "\n";
 
   return build_JSON_str(llvm::json::Value(std::move(response)));
 }
@@ -428,21 +392,16 @@ const char* request_setBreakpoints(char* const json) {
   body.try_emplace("breakpoints", std::move(response_breakpoints));
   response.try_emplace("body", std::move(body));
 
-  cout << "END setBreakpoints: " << response.getString("type").getValue().data() << "\n";
-
   return build_JSON_str(llvm::json::Value(std::move(response)));
 }
 
 const char* request_pubkey(char* const name) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << name << "\n";
-
     SBError error;
     memset(PUBKEY, 0, PUBKEY_LEN);
     SBData p = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().EvaluateExpression(name).GetPointeeData();
     for (int i=0; i<PUBKEY_LEN; i++)
         PUBKEY[i] = p.GetUnsignedInt8(error, i);
 
-    std::cout << "END LLDB WASM call - " << __FUNCTION__ << ": " << PUBKEY << "\n";
     return PUBKEY;
 }
 
@@ -525,8 +484,6 @@ const char* request_variables(char* const json) {
   llvm::json::Object body;
   body.try_emplace("variables", std::move(variables));
   response.try_emplace("body", std::move(body));
-
-  cout << "END variables: " << response.getString("type").getValue().data() << "\n";
 
   return build_JSON_str(llvm::json::Value(std::move(response)));
 }

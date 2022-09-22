@@ -103,7 +103,6 @@ static thread_result_t MonitorChildProcessThreadFunction(void *arg);
 llvm::Expected<HostThread> Host::StartMonitoringChildProcess(
     const Host::MonitorChildProcessCallback &callback, lldb::pid_t pid,
     bool monitor_signals) {
-  llvm::errs() << "START Host::StartMonitoringChildProcess\n";
   MonitorInfo *info_ptr = new MonitorInfo();
 
   info_ptr->pid = pid;
