@@ -81,8 +81,6 @@ int main() {
     g_vsc.debugger = SBDebugger::Create();
     g_vsc.debugger.SetAsync(true);
 
-    std::cout << "END LLDB - INIT main() c++\n";
-    
     return 0;
 }
 
@@ -93,8 +91,6 @@ void read_JSON(std::string json, llvm::json::Object &object) {
     llvm::Expected<llvm::json::Value> json_value = llvm::json::parse(json_sref);
 
     object = *json_value->getAsObject();
-
-    const auto command = GetString(object, "command");
 }
 
 // Serialize the JSON value into a string.
@@ -105,16 +101,6 @@ const char* build_JSON_str(const llvm::json::Value &json) {
       
   // Needs to be free'd
   return strdup(strm.str().c_str());
-}
-
-int main() {
-    std::cout << "LLDB WASM - init main()\n";
-
-    // Create debugger instance
-    g_vsc.debugger = SBDebugger::Create();
-    g_vsc.debugger.SetAsync(true);
-
-    return 0;
 }
 
 // API
@@ -166,12 +152,15 @@ bool is_sol_log(string& sol_log_msg) {
 }
 
 void till_next_line_next(uint32_t line_before, string& sol_log_msg) {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     uint32_t func_start, now;
     func_start = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetStartAddress().GetLineEntry().GetLine();
     now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
 
     while ((now == func_start || now == line_before) && should_terminate() == 0) {
+        cout << "line_before: " << line_before << " func_start: " << func_start << " now: " << now << "\n";
         if (!g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().IsValid()) {
+            cout << "!!!! NO LINE INFO\n";
             break;
         }
         sol_log_msg.append(request_next());
