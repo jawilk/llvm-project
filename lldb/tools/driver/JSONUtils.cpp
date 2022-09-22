@@ -569,7 +569,7 @@ llvm::json::Value CreateSource(lldb::SBFrame &frame, int64_t &disasm_line) {
       source.addr_to_line[inst_addr] = i + 1;
     }
     // Flush the source stream
-    llvm::errs() << "SOURCE DAT: " << src_strm.str() << "\n";
+    src_strm.str();
     auto sourceReference = VSCode::GetNextSourceReference();
     g_vsc.source_map[sourceReference] = std::move(source);
     g_vsc.addr_to_source_ref[low_pc] = sourceReference;

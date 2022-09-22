@@ -41,10 +41,7 @@ int64_t VSCode::GetNextSourceReference() {
 }
 
 lldb::SBThread VSCode::GetLLDBThread(const llvm::json::Object &arguments) {
-  llvm::errs() << "VSCode::GetLLDBThread\n";
   auto tid = GetSigned(arguments, "threadId", LLDB_INVALID_THREAD_ID);
-  llvm::errs() << "ID: " << tid << "\n";
-  llvm::errs() << "num threads: " << target.GetProcess().GetNumThreads() << "\n";
   return target.GetProcess().GetThreadByID(tid);
 }
 
