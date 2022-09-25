@@ -112,6 +112,7 @@ llvm::errs() << "BEFORE stop_type PacketResult::ErrorReplyTimeout -  SendContinu
     switch (stop_type) {
     case 'W':
     case 'X':
+      llvm::errs() << "eStateExited FROM STUBn";
       return eStateExited;
     case 'E':
       // ERROR

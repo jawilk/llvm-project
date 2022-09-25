@@ -256,7 +256,7 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
   }
   //bool timed_out = false;
   //bool disconnected = false;
-  int sleep_count = 0;
+  // int sleep_count = 0;
   while (IsConnected()) {// && !timed_out) {
     lldb::ConnectionStatus status = eConnectionStatusNoConnection;
 
@@ -276,13 +276,13 @@ GDBRemoteCommunication::WaitForPacketNoLock(StringExtractorGDBRemote &packet,
         return PacketResult::Success;
     } else {
         llvm::errs() << "!!!! READ = 0\n";
-        if (status == eConnectionStatusTimedOut || sleep_count == 50) {
+        if (status == eConnectionStatusTimedOut) {// || sleep_count == 50) {
             llvm::errs() << "TIMEOUT !!!!\n";
 	    Disconnect();
             return PacketResult::ErrorDisconnected;
         }
     }
-    sleep_count++;
+    // sleep_count++;
     
     llvm::errs() << "AFTER CheckPacket WHILE\n";
 /* else {

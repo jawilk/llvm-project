@@ -41,7 +41,7 @@ using namespace std;
 // API calls, these will return values (if any) to the typescript vscode-solana-debug extension
 // EMSCRIPTEN_KEEPALIVE will add to EXPORTED_FUNCTIONS automatically
 extern "C" {
-    EMSCRIPTEN_KEEPALIVE void execute_command(const char* input);
+    EMSCRIPTEN_KEEPALIVE const char* execute_command(const char* input);
     EMSCRIPTEN_KEEPALIVE void create_target(const char* path);
     EMSCRIPTEN_KEEPALIVE const char* request_variables(char* const json);
     EMSCRIPTEN_KEEPALIVE const char* request_pubkey(char* const name);
@@ -49,11 +49,12 @@ extern "C" {
     EMSCRIPTEN_KEEPALIVE const char* request_setBreakpoints(char* const json);
     EMSCRIPTEN_KEEPALIVE const char* request_stackTrace(char* const json);
     EMSCRIPTEN_KEEPALIVE const char* request_source(char* const json);
-    EMSCRIPTEN_KEEPALIVE int request_next();
-    EMSCRIPTEN_KEEPALIVE int request_stepIn();
-    EMSCRIPTEN_KEEPALIVE int request_stepOut();
-    EMSCRIPTEN_KEEPALIVE int request_continue();
+    EMSCRIPTEN_KEEPALIVE const char* request_next();
+    EMSCRIPTEN_KEEPALIVE const char* request_stepIn();
+    EMSCRIPTEN_KEEPALIVE const char* request_stepOut();
+    EMSCRIPTEN_KEEPALIVE const char* request_continue();
     EMSCRIPTEN_KEEPALIVE void request_terminate();
+    EMSCRIPTEN_KEEPALIVE int should_terminate();
 }
 
 class LLDBSentry {
@@ -71,9 +72,10 @@ public:
 // Emscripten globals
 static LLDBSentry sentry;
 char PUBKEY[PUBKEY_LEN];
+SBError g_error;
 
 int main() {
-    std::cout << "LLDB - init main()\n";
+    std::cout << "LLDB WASM - init main()\n";
 
     // Create debugger instance
     g_vsc.debugger = SBDebugger::Create();
@@ -111,10 +113,13 @@ const char* build_JSON_str(const llvm::json::Value &json) {
 }
 
 // API
-void execute_command(const char* input) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << input << "\n";
+const char* execute_command(const char* command) {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << ": " << command << "\n";
 
-    g_vsc.debugger.HandleCommand(input);
+    SBCommandReturnObject result;
+    SBCommandInterpreter sb_interpreter = g_vsc.debugger.GetCommandInterpreter();
+    sb_interpreter.HandleCommand(command, result, false);
+    return strdup(result.GetOutput());
 }
 
 void create_target(const char* path) {
@@ -133,78 +138,116 @@ void request_terminate() {
     g_vsc.debugger.SetAsync(true);
 }
 
-int should_terminate(SBError error) {
-   if (!error.Success()) {
+int should_terminate() {
+   if (!g_error.Success()) {
+        cout << "************** CONTINUE NO SUCCESS\n";
         execute_command("kill");
         return -1;
     }
+    std::cout << "************** CONTINUE SUCCESS\n";
     return 0;
 }
 
-int till_next_line_next(uint32_t before, SBError error) {
+bool is_sol_log(string& sol_log_msg) {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+    if (g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().IsValid()) {
+        if (g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().IsValid()) {
+            string func_name = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetName();
+	    if (func_name.find("sol_log") != std::string::npos) {
+                SBValue var = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().FindVariable("message");
+                SBValue v = var.GetChildAtIndex(0);
+	        int length = atoi(var.GetChildAtIndex(1).GetValue());
+                sol_log_msg += "sol_log_ -> ";
+                sol_log_msg.append(&(v.GetSummary()[1]), length);
+                sol_log_msg += "\n\n";
+                cout << "SOL_LOG: " << sol_log_msg << "\n";
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void till_next_line_next(uint32_t line_before, string& sol_log_msg) {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     uint32_t func_start, now;
     func_start = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetStartAddress().GetLineEntry().GetLine();
     now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
 
-    while ((now == func_start || now == before) && should_terminate(error) == 0) {
-        cout << "before: " << before << " func_start: " << func_start << " now: " << now << "\n";
+    while ((now == func_start || now == line_before) && should_terminate() == 0) {
+        cout << "line_before: " << line_before << " func_start: " << func_start << " now: " << now << "\n";
         if (!g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().IsValid()) {
-            cout << "NO LINE INFO AVAILABLE!\n";
+            cout << "!!!! NO LINE INFO\n";
             break;
-       } 
-       g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, error);
+        }
+        sol_log_msg.append(request_next());
         now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
     }
-    return should_terminate(error);
 }
 
-int till_not_def_step_in(SBError error) {
+void till_not_def_step_in(string& sol_log_msg) {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-    int error_rec = should_terminate(error);
+    int error_rec = should_terminate();
     uint32_t func_start, now;
-
     if (!g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().IsValid())
-        return error_rec;
-
+        return;
     func_start = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetStartAddress().GetLineEntry().GetLine();
     now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
     if (now == func_start && error_rec == 0)
-        error_rec = request_stepIn();
-    return error_rec;
+        sol_log_msg += request_stepIn();
 }
 
-int request_next() {
-        std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-    SBError error;
-    uint32_t before = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
-    g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, error);
-    return till_next_line_next(before, error);
+const char* request_next() {
+    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+    string sol_log_msg;
+    uint32_t line_before;
+    SBBreakpoint bp;
+    
+    line_before = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
+    bp = g_vsc.target.BreakpointCreateByLocation(g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetFileSpec(), line_before+1);
+
+    g_vsc.target.GetProcess().GetSelectedThread().StepOver(eOnlyThisThread, g_error);
+
+    if (is_sol_log(sol_log_msg))
+        g_error = g_vsc.target.GetProcess().Continue();
+    g_vsc.target.BreakpointDelete(bp.GetID());
+    
+    till_next_line_next(line_before, sol_log_msg);
+    return strdup(sol_log_msg.c_str());
 }
 
-int request_stepIn() {
+const char* request_stepIn() {
+    string sol_log_msg = "";
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-    SBError error;
-    g_vsc.target.GetProcess().GetSelectedThread().StepInto(nullptr, LLDB_INVALID_LINE_NUMBER, error, eOnlyThisThread);
-    return till_not_def_step_in(error);
+    g_vsc.target.GetProcess().GetSelectedThread().StepInto(nullptr, LLDB_INVALID_LINE_NUMBER, g_error, eOnlyThisThread);
+    
+    till_not_def_step_in(sol_log_msg);
+    return strdup(sol_log_msg.c_str());
 }
 
-int request_stepOut() {
+const char* request_stepOut() {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
-
-    SBError error;
-    g_vsc.target.GetProcess().GetSelectedThread().StepOut(error);
-    return should_terminate(error);
+    
+    string sol_log_msg;
+    g_vsc.target.GetProcess().GetSelectedThread().StepOut(g_error);
+    return strdup(sol_log_msg.c_str());
 }
 
-// -1 to indicate the process has terminated.
-int request_continue() {
+const char* request_continue() {
     std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
 
-    SBError error;
-    error = g_vsc.target.GetProcess().Continue();
-    return should_terminate(error);
+    string sol_log_msg;
+    g_error = g_vsc.target.GetProcess().Continue();
+
+    while (is_sol_log(sol_log_msg))
+        g_error = g_vsc.target.GetProcess().Continue();
+
+    printf("ERROR request_continue: %s\n", g_error.GetCString());
+
+    cout << "END LLDB WASM call - " << __FUNCTION__ << "\n";
+
+    return strdup(sol_log_msg.c_str());
 }
 
 const char* request_source(char* const json) {
