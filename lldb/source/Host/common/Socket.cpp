@@ -220,7 +220,6 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
   int sleep_count = 0;
   int res;
   fd_set fdr;
-  llvm::errs() << "m_socket: " << m_socket << "\n";
   FD_ZERO(&fdr);
   FD_SET(m_socket, &fdr);
   res = select(m_socket+1, &fdr, NULL, NULL, NULL);
@@ -234,22 +233,18 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
       if (res == -1)
           llvm::errs() << "READ SOCKET SELECT FAILED\n";
        #if defined(__EMSCRIPTEN__)
-           llvm::errs() << "bytes_received SLEEEEEP ConnectionFileDescriptor::Read count: " << sleep_count << "\n";
            emscripten_sleep(sleep_count);
            sleep_count++;
        #endif
    }
     bytes_received = ::recv(m_socket, static_cast<char *>(buf), num_bytes, 0);
-    llvm::errs() << "bytes_received: " << bytes_received << "\n";
     if (bytes_received < 0) {
       #if defined(__EMSCRIPTEN__)
-           llvm::errs() << "bytes_received SLEEEEEP ConnectionFileDescriptor::Read count: " << sleep_count << "\n";
            emscripten_sleep(sleep_count);
            sleep_count++;
        #endif
     }
     if (bytes_received == 0 || sleep_count == 150) {
-        llvm::errs() << "???? SOCKET DISONNECTED\n";
         error.SetErrorToGenericError();
         return error;
     }

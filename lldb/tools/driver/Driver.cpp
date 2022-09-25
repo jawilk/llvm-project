@@ -75,8 +75,6 @@ char PUBKEY[PUBKEY_LEN];
 SBError g_error;
 
 int main() {
-    std::cout << "LLDB WASM - init main()\n";
-
     // Create debugger instance
     g_vsc.debugger = SBDebugger::Create();
     g_vsc.debugger.SetAsync(true);
@@ -152,15 +150,12 @@ bool is_sol_log(string& sol_log_msg) {
 }
 
 void till_next_line_next(uint32_t line_before, string& sol_log_msg) {
-    std::cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
     uint32_t func_start, now;
     func_start = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetFunction().GetStartAddress().GetLineEntry().GetLine();
     now = g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().GetLine();
 
     while ((now == func_start || now == line_before) && should_terminate() == 0) {
-        cout << "line_before: " << line_before << " func_start: " << func_start << " now: " << now << "\n";
         if (!g_vsc.target.GetProcess().GetSelectedThread().GetSelectedFrame().GetLineEntry().IsValid()) {
-            cout << "!!!! NO LINE INFO\n";
             break;
         }
         sol_log_msg.append(request_next());

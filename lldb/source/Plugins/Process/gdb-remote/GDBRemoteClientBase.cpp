@@ -104,7 +104,6 @@ StateType GDBRemoteClientBase::SendContinuePacketAndWaitForResponse(
     switch (stop_type) {
     case 'W':
     case 'X':
-      llvm::errs() << "eStateExited FROM STUBn";
       return eStateExited;
     case 'E':
       // ERROR

@@ -290,7 +290,6 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
   }*/
 
   if (bytes_read == 0) {
-        llvm::errs() << "bytes_read = 0\n";
         status = eConnectionStatusTimedOut;
         return 0;
   }
