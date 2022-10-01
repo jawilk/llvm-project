@@ -346,7 +346,7 @@ FileSpec Host::GetModuleFileSpecForHostAddress(const void *host_addr) {
 
 #endif
 
-#if !defined(__linux__)
+#if !defined(__linux__) && !defined(__EMSCRIPTEN__)
 bool Host::FindProcessThreads(const lldb::pid_t pid, TidMap &tids_to_attach) {
   return false;
 }

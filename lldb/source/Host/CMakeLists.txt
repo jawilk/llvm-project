@@ -98,7 +98,7 @@ else()
     endif()
 
 
-  elseif (CMAKE_SYSTEM_NAME MATCHES "Linux|Android")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "Linux|Android|Emscripten")
     add_host_subdirectory(linux
       linux/AbstractSocket.cpp
       linux/Host.cpp
