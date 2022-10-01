@@ -826,6 +826,7 @@ using namespace std;
 
 extern "C" {
     EMSCRIPTEN_KEEPALIVE const char* execute_command(const char* input);
+    EMSCRIPTEN_KEEPALIVE void create_target(const char* path);
 }
 
 class LLDBSentry {
@@ -865,5 +866,15 @@ const char* execute_command(const char* command) {
     sb_interpreter.HandleCommand(command, result, false);
     cout << "result: " << result.GetOutput() << "\n";
     return strdup(result.GetOutput());
+}
+
+void create_target(const char* path) {
+    cout << "LLDB WASM call - " << __FUNCTION__ << " path: " << path << "\n";
+
+    SBError error;
+    const char *arch = NULL;
+    const char *platform = NULL;
+    const bool add_dependent_libs = false;
+    g_debugger.CreateTarget(path, arch, platform, add_dependent_libs, error);
 }
 #endif
