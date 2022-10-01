@@ -741,6 +741,7 @@ EXAMPLES:
   llvm::outs() << examples << '\n';
 }
 
+#ifndef __EMSCRIPTEN__
 int main(int argc, char const *argv[]) {
   // Editline uses for example iswprint which is dependent on LC_CTYPE.
   std::setlocale(LC_ALL, "");
@@ -817,3 +818,52 @@ int main(int argc, char const *argv[]) {
   SBDebugger::Terminate();
   return exit_code;
 }
+#else
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#include <iostream>
+
+using namespace std;
+
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE const char* execute_command(const char* input);
+}
+
+class LLDBSentry {
+public:
+  LLDBSentry() {
+    // Initialize LLDB
+    SBDebugger::Initialize();
+  }
+  ~LLDBSentry() {
+    // Terminate LLDB
+    SBDebugger::Terminate();
+  }
+};
+
+static SBDebugger g_debugger;
+static LLDBSentry sentry;
+
+
+int main() {
+    cout << "LLDB WASM call - " << __FUNCTION__ << "\n";
+
+    // Create debugger instance
+    g_debugger = SBDebugger::Create(false);
+    if (!g_debugger.IsValid())
+        fprintf(stderr, "error: failed to create a debugger object\n");
+    g_debugger.SetAsync(false);
+
+    return 0;
+}
+
+// API
+const char* execute_command(const char* command) {
+    cout << "LLDB WASM call - " << __FUNCTION__ << " command: " << command << "\n";
+
+    SBCommandReturnObject result;
+    SBCommandInterpreter sb_interpreter = g_debugger.GetCommandInterpreter();
+    sb_interpreter.HandleCommand(command, result, false);
+    cout << "result: " << result.GetOutput() << "\n";
+    return strdup(result.GetOutput());
+}
+#endif
