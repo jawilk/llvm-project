@@ -6,6 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#endif
+
 #if defined(__APPLE__)
 // Enable this special support for Apple builds where we can have unlimited
 // select bounds. We tried switching to poll() and kqueue and we were panicing
@@ -271,9 +275,9 @@ size_t ConnectionFileDescriptor::Read(void *dst, size_t dst_len,
     return 0;
   }
 
-  status = BytesAvailable(timeout, error_ptr);
+  /*status = BytesAvailable(timeout, error_ptr);
   if (status != eConnectionStatusSuccess)
-    return 0;
+    return 0;*/
 
   Status error;
   size_t bytes_read = dst_len;
@@ -379,7 +383,25 @@ size_t ConnectionFileDescriptor::Write(const void *src, size_t src_len,
   }
 
   Status error;
-
+  
+  #if defined(__EMSCRIPTEN__)
+  int res;
+  fd_set fdw;
+  FD_ZERO(&fdw);
+  FD_SET(m_io_sp->GetWaitableHandle(), &fdw);
+  res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdw, NULL, NULL);
+  while (!FD_ISSET(m_io_sp->GetWaitableHandle(), &fdw)) {
+     #if defined(__EMSCRIPTEN__)
+          llvm::errs() << "SLEEEEEP ConnectionFileDescriptor::Write\n";
+          emscripten_sleep(0);
+      #endif
+      FD_ZERO(&fdw);
+      FD_SET(m_io_sp->GetWaitableHandle(), &fdw);
+      res = select(m_io_sp->GetWaitableHandle()+1, NULL, &fdw, NULL, NULL);
+      if (res == -1)
+          llvm::errs() << "WRITE SOCKET SELECT FAILED\n";
+  }
+  #endif
   size_t bytes_sent = src_len;
   error = m_io_sp->Write(src, bytes_sent);
 

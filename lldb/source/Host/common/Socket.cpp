@@ -6,6 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include "/home/wj/projects/emsdk/upstream/emscripten/cache/sysroot/include/emscripten/emscripten.h"
+#endif
+
 #include "lldb/Host/Socket.h"
 
 #include "lldb/Host/Config.h"
@@ -214,6 +218,38 @@ IOObject::WaitableHandle Socket::GetWaitableHandle() {
 }
 
 Status Socket::Read(void *buf, size_t &num_bytes) {
+  #if defined(__EMSCRIPTEN__)
+  int sleep_count, bytes_received, res;
+  fd_set fdr;
+  llvm::errs() << "m_socket: " << m_socket << "\n";
+  FD_ZERO(&fdr);
+  FD_SET(m_socket, &fdr);
+  res = select(m_socket+1, &fdr, NULL, NULL, NULL);
+  Status error;
+  sleep_count = bytes_received = 0;
+  do {
+    while (!FD_ISSET(m_socket, &fdr)) {
+       FD_ZERO(&fdr);
+       FD_SET(m_socket, &fdr);
+      res = select(m_socket+1, NULL, &fdr, NULL, NULL);
+      if (res == -1)
+          llvm::errs() << "READ SOCKET SELECT FAILED\n";
+           emscripten_sleep(sleep_count);
+           sleep_count++;
+    }
+    bytes_received = ::recv(m_socket, static_cast<char *>(buf), num_bytes, 0);
+    if (bytes_received < 0) {
+           emscripten_sleep(sleep_count);
+           sleep_count++;
+    }
+    if (bytes_received == 0 || sleep_count == 150) {
+        error.SetErrorToGenericError();
+        return error;
+    }
+  } while (bytes_received < 0);
+  num_bytes = bytes_received;
+  return error;
+  #else
   Status error;
   int bytes_received = 0;
   do {
@@ -238,6 +274,7 @@ Status Socket::Read(void *buf, size_t &num_bytes) {
   }
 
   return error;
+  #endif
 }
 
 Status Socket::Write(const void *buf, size_t &num_bytes) {

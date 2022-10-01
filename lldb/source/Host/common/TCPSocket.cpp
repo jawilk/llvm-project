@@ -6,6 +6,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(__EMSCRIPTEN__)
+#include <fcntl.h>
+#include <arpa/inet.h>
+#endif
+
 #if defined(_MSC_VER)
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #endif
@@ -138,24 +143,62 @@ std::string TCPSocket::GetRemoteConnectionURI() const {
 
 Status TCPSocket::CreateSocket(int domain) {
   Status error;
+  #if defined(__EMSCRIPTEN__)
+  m_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (m_socket == -1) {
+    perror("cannot create socket");
+    error.SetErrorToGenericError();
+  }
+  fcntl(m_socket, F_SETFL, O_NONBLOCK);
+  #else
   if (IsValid())
     error = Close();
   if (error.Fail())
     return error;
   m_socket = Socket::CreateSocket(domain, kType, IPPROTO_TCP,
                                   m_child_processes_inherit, error);
+  #endif
   return error;
 }
 
 Status TCPSocket::Connect(llvm::StringRef name) {
 
-  Log *log = GetLog(LLDBLog::Communication);
-  LLDB_LOGF(log, "TCPSocket::%s (host/port = %s)", __FUNCTION__, name.data());
-
   Status error;
   llvm::Expected<HostAndPort> host_port = DecodeHostAndPort(name);
   if (!host_port)
     return Status(host_port.takeError());
+
+  #if defined(__EMSCRIPTEN__)
+  CreateSocket(0);
+  struct sockaddr_in addr;
+  int res;
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(host_port->port);
+  if (host_port->hostname == "localhost") {
+    if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+      perror("inet_pton failed");
+      error.SetErrorToGenericError();
+      return error;
+    }
+  } else {  
+    if (inet_pton(AF_INET, host_port->hostname.c_str(), &addr.sin_addr) != 1) {
+      perror("inet_pton failed");
+      error.SetErrorToGenericError();
+      return error;
+    }
+  }
+
+  res = connect(m_socket, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
+    perror("connect failed");
+    error.SetErrorToGenericError();
+    return error;
+  }
+  error.Clear();
+  return error;
+  #else
+  Log *log = GetLog(LLDBLog::Communication);
+  LLDB_LOGF(log, "TCPSocket::%s (host/port = %s)", __FUNCTION__, name.data());
 
   std::vector<SocketAddress> addresses =
       SocketAddress::GetAddressInfo(host_port->hostname.c_str(), nullptr,
@@ -185,6 +228,7 @@ Status TCPSocket::Connect(llvm::StringRef name) {
 
   error.SetErrorString("Failed to connect port");
   return error;
+  #endif
 }
 
 Status TCPSocket::Listen(llvm::StringRef name, int backlog) {
