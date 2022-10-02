@@ -527,7 +527,7 @@ Status ProcessGDBRemote::DoConnectRemote(llvm::StringRef remote_url) {
   if (error.Fail())
     return error;
 
-  StartAsyncThread();
+  //StartAsyncThread();
 
   lldb::pid_t pid = m_gdb_comm.GetCurrentProcessID();
   if (pid == LLDB_INVALID_PROCESS_ID) {
@@ -1172,11 +1172,11 @@ Status ProcessGDBRemote::DoResume() {
 
   ListenerSP listener_sp(
       Listener::MakeListener("gdb-remote.resume-packet-sent"));
-  if (listener_sp->StartListeningForEvents(
+  /*if (listener_sp->StartListeningForEvents(
           &m_gdb_comm, GDBRemoteClientBase::eBroadcastBitRunPacketSent)) {
     listener_sp->StartListeningForEvents(
         &m_async_broadcaster,
-        ProcessGDBRemote::eBroadcastBitAsyncThreadDidExit);
+        ProcessGDBRemote::eBroadcastBitAsyncThreadDidExit);*/
 
     const size_t num_threads = GetThreadList().GetSize();
 
@@ -1352,19 +1352,22 @@ Status ProcessGDBRemote::DoResume() {
       error.SetErrorString("can't make continue packet for this resume");
     } else {
       EventSP event_sp;
-      if (!m_async_thread.IsJoinable()) {
+      /*if (!m_async_thread.IsJoinable()) {
         error.SetErrorString("Trying to resume but the async thread is dead.");
         LLDB_LOGF(log, "ProcessGDBRemote::DoResume: Trying to resume but the "
                        "async thread is dead.");
         return error;
-      }
+      }*/
 
       m_async_broadcaster.BroadcastEvent(
           eBroadcastBitAsyncContinue,
           new EventDataBytes(continue_packet.GetString().data(),
                              continue_packet.GetSize()));
 
-      if (!listener_sp->GetEvent(event_sp, std::chrono::seconds(5))) {
+      // Call async "thread" directly
+      error = ProcessGDBRemote::AsyncThread(this);
+
+      /*if (!listener_sp->GetEvent(event_sp, std::chrono::seconds(5))) {
         error.SetErrorString("Resume timed out.");
         LLDB_LOGF(log, "ProcessGDBRemote::DoResume: Resume timed out.");
       } else if (event_sp->BroadcasterIs(&m_async_broadcaster)) {
@@ -1374,9 +1377,9 @@ Status ProcessGDBRemote::DoResume() {
                   "ProcessGDBRemote::DoResume: Broadcast continue, but the "
                   "async thread was killed before we got an ack back.");
         return error;
-      }
+      }*/
     }
-  }
+  //} // if (listener_sp->...
 
   return error;
 }
@@ -3385,7 +3388,7 @@ void ProcessGDBRemote::DebuggerInitialize(Debugger &debugger) {
 }
 
 bool ProcessGDBRemote::StartAsyncThread() {
-  Log *log = GetLog(GDBRLog::Process);
+  /*Log *log = GetLog(GDBRLog::Process);
 
   LLDB_LOGF(log, "ProcessGDBRemote::%s ()", __FUNCTION__);
 
@@ -3408,7 +3411,7 @@ bool ProcessGDBRemote::StartAsyncThread() {
     LLDB_LOGF(log,
               "ProcessGDBRemote::%s () - Called when Async thread was "
               "already running.",
-              __FUNCTION__);
+              __FUNCTION__);*/
 
   return m_async_thread.IsJoinable();
 }
@@ -3435,6 +3438,132 @@ void ProcessGDBRemote::StopAsyncThread() {
         __FUNCTION__);
 }
 
+
+#if defined(__EMSCRIPTEN__)
+bool is_exit = false;
+Status ProcessGDBRemote::AsyncThread(void *arg) {
+    ProcessGDBRemote *process = (ProcessGDBRemote *)arg;
+    EventSP event_sp;
+    Status error;
+
+    if (process->m_async_listener_sp->GetEvent(event_sp, llvm::None)) {
+	      const uint32_t event_type = event_sp->GetType();
+	      if (event_sp->BroadcasterIs(&process->m_async_broadcaster)) {
+		switch (event_type) {
+		case eBroadcastBitAsyncContinue: {
+		  const EventDataBytes *continue_packet =
+		      EventDataBytes::GetEventDataFromEvent(event_sp.get());
+
+		  if (continue_packet) {
+		    const char *continue_cstr =
+		        (const char *)continue_packet->GetBytes();
+		    const size_t continue_cstr_len = continue_packet->GetByteSize();
+
+		    if (::strstr(continue_cstr, "vAttach") == nullptr) {
+		      process->SetPrivateState(eStateRunning);
+		      // Call PrivateStateThread
+		      process->RunPrivateStateThread(false);
+                    }
+		    StringExtractorGDBRemote response;
+		    StateType stop_state =
+		        process->GetGDBRemote().SendContinuePacketAndWaitForResponse(
+		            *process, *process->GetUnixSignals(),
+		            llvm::StringRef(continue_cstr, continue_cstr_len),
+		            process->GetInterruptTimeout(), response);
+		      // We need to immediately clear the thread ID list so we are sure
+		      // to get a valid list of threads. The thread ID list might be
+		      // contained within the "response", or the stop reply packet that
+		      // caused the stop. So clear it now before we give the stop reply
+		      // packet to the process using the
+		      // process->SetLastStopPacket()...
+		      process->ClearThreadIDList();
+		      switch (stop_state) {
+		    case eStateStopped:
+		    case eStateCrashed:
+		    case eStateSuspended:
+		      process->SetLastStopPacket(response);
+		      process->SetPrivateState(stop_state);
+		      // Call PrivateStateThread
+		      process->RunPrivateStateThread(false);
+		      break;
+
+		    case eStateExited: {
+		      process->SetLastStopPacket(response);
+		      process->ClearThreadIDList();
+		      response.SetFilePos(1);
+
+		        int exit_status = response.GetHexU8();
+		        std::string desc_string;
+		        if (response.GetBytesLeft() > 0 &&
+		            response.GetChar('-') == ';') {
+		          llvm::StringRef desc_str;
+		          llvm::StringRef desc_token;
+		          while (response.GetNameColonValue(desc_token, desc_str)) {
+		            if (desc_token != "description")
+		              continue;
+		            StringExtractor extractor(desc_str);
+		            extractor.GetHexByteString(desc_string);
+		          }
+		        }
+		        process->SetExitStatus(exit_status, desc_string.c_str());
+                        error.SetErrorToGenericError();
+                        is_exit = true;
+                        return error;
+		        //break;
+		      }
+		      case eStateInvalid: {
+		        // Check to see if we were trying to attach and if we got back
+		        // the "E87" error code from debugserver -- this indicates that
+		        // the process is not debuggable.  Return a slightly more
+		        // helpful error message about why the attach failed.
+		        /*if (::strstr(continue_cstr, "vAttach") != nullptr &&
+		            response.GetError() == 0x87) {
+		          process->SetExitStatus(-1, "cannot attach to process due to "
+		                                     "System Integrity Protection");
+		        } else if (::strstr(continue_cstr, "vAttach") != nullptr &&
+		                   response.GetStatus().Fail()) {
+		          process->SetExitStatus(-1, response.GetStatus().AsCString());
+		        } else {*/
+		          process->SetExitStatus(-1, "lost connection");
+		        //}
+                        error.SetErrorToGenericError();
+                        is_exit = true;
+                        return error;
+		        //break;
+		      }
+
+		      default:
+		        process->SetPrivateState(stop_state);
+			// Call PrivateStateThread
+		        process->RunPrivateStateThread(false);
+		        break;
+		      } // switch(stop_state)
+		  }     // if (continue_packet)
+		}       // case eBroadcastBitAsyncContinue
+		break;
+
+		case eBroadcastBitAsyncThreadShouldExit:
+		  break;
+
+		default:
+		  break;
+		}
+	      } else if (event_sp->BroadcasterIs(&process->m_gdb_comm)) {
+		switch (event_type) {
+		case eBroadcastBitAsyncThreadDidExit:
+		  process->SetExitStatus(-1, "lost connection");
+		  break;
+
+		default:
+		  break;
+		}
+	      }
+	    }
+  if (is_exit)
+      error.SetErrorToGenericError();
+  return error;
+}
+#else
 thread_result_t ProcessGDBRemote::AsyncThread() {
   Log *log = GetLog(GDBRLog::Process);
   LLDB_LOGF(log, "ProcessGDBRemote::%s(pid = %" PRIu64 ") thread starting...",
@@ -3587,6 +3716,7 @@ thread_result_t ProcessGDBRemote::AsyncThread() {
 
   return {};
 }
+#endif
 
 // uint32_t
 // ProcessGDBRemote::ListProcessesMatchingName (const char *name, StringList

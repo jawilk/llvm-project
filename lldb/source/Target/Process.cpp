@@ -3048,13 +3048,22 @@ Status Process::ConnectRemote(llvm::StringRef remote_url) {
         // This delays passing the stopped event to listeners till
         // CompleteAttach gets a chance to complete...
         HandlePrivateEvent(event_sp);
+
+        #if defined(__EMSCRIPTEN__)
+        std::shared_ptr<EventDataReceipt> event_receipt_sp(new EventDataReceipt());
+        m_private_state_control_broadcaster.BroadcastEvent(eBroadcastInternalStateControlResume,
+                                                       event_receipt_sp);
+        RunPrivateStateThread(false);
+        #endif
       }
     }
 
+    #if !defined(__EMSCRIPTEN__)
     if (PrivateStateThreadIsValid())
       ResumePrivateStateThread();
     else
       StartPrivateStateThread();
+    #endif
   }
   return error;
 }
@@ -3649,6 +3658,25 @@ void Process::SendAsyncInterrupt() {
     BroadcastEvent(Process::eBroadcastBitInterrupt, nullptr);
 }
 
+#if defined(__EMSCRIPTEN__)
+void Process::HandlePrivateEvent(EventSP &event_sp) {
+  m_resume_requested = false;
+
+  const StateType new_state =
+      Process::ProcessEventData::GetStateFromEvent(event_sp.get());
+
+  // See if we should broadcast this state to external clients?
+  const bool should_broadcast = ShouldBroadcastEvent(event_sp.get());
+
+  if (should_broadcast) {
+
+    Process::ProcessEventData::SetUpdateStateOnRemoval(event_sp.get());
+    BroadcastEvent(event_sp);
+
+  } 
+
+}
+#else
 void Process::HandlePrivateEvent(EventSP &event_sp) {
   Log *log = GetLog(LLDBLog::Process);
   m_resume_requested = false;
@@ -3759,6 +3787,7 @@ void Process::HandlePrivateEvent(EventSP &event_sp) {
     }
   }
 }
+#endif
 
 Status Process::HaltPrivate() {
   EventSP event_sp;
@@ -3774,6 +3803,87 @@ Status Process::HaltPrivate() {
   return error;
 }
 
+#if defined(__EMSCRIPTEN__)
+bool control_only = true;
+//bool exit_now = false;
+bool interrupt_requested = false;
+thread_result_t Process::RunPrivateStateThread(bool blah) {
+    /*bool done = false;
+while(!done) {*/
+    EventSP event_sp;
+    GetEventsPrivate(event_sp, llvm::None, control_only);
+    //done = true;
+    if (event_sp->BroadcasterIs(&m_private_state_control_broadcaster)) {
+      switch (event_sp->GetType()) {
+	      case eBroadcastInternalStateControlStop:
+		//exit_now = true;
+		break; // doing any internal state management below
+
+	      case eBroadcastInternalStateControlPause:
+		control_only = true;
+		break;
+
+	      case eBroadcastInternalStateControlResume:
+		control_only = false;
+		break;
+	      } // Switch
+      return {};
+
+    } // If broadcaster_type
+  else if (event_sp->GetType() == eBroadcastBitInterrupt) {
+      if (m_public_state.GetValue() == eStateAttaching) {
+        
+        //BroadcastEvent(eBroadcastBitInterrupt, nullptr);
+      } else if (StateIsRunningState(m_last_broadcast_state)) {
+        
+        Status error = HaltPrivate();
+        // Halt should generate a stopped event. Make a note of the fact that
+        // we were doing the interrupt, so we can set the interrupted flag
+        // after we receive the event. We deliberately set this to true even if
+        // HaltPrivate failed, so that we can interrupt on the next natural
+        // stop.
+        interrupt_requested = true;
+      } else {
+        // This can happen when someone (e.g. Process::Halt) sees that we are
+        // running and sends an interrupt request, but the process actually
+        // stops before we receive it. In that case, we can just ignore the
+        // request. We use m_last_broadcast_state, because the Stopped event
+        // may not have been popped of the event queue yet, which is when the
+        // public state gets updated.
+      }
+      return {};
+    }
+
+    const StateType internal_state =
+        Process::ProcessEventData::GetStateFromEvent(event_sp.get());
+
+    if (internal_state != eStateInvalid) {
+      if (m_clear_thread_plans_on_stop &&
+          StateIsStoppedState(internal_state, true)) {
+        m_clear_thread_plans_on_stop = false;
+        m_thread_list.DiscardThreadPlans();
+      }
+
+      if (interrupt_requested) {
+        if (StateIsStoppedState(internal_state, true)) {
+          // We requested the interrupt, so mark this as such in the stop event
+          // so clients can tell an interrupted process from a natural stop
+          //ProcessEventData::SetInterruptedInEvent(event_sp.get(), true);
+          interrupt_requested = false;
+        }
+      }
+      HandlePrivateEvent(event_sp);
+      //done = false;
+    }
+
+    // if (internal_state == eStateInvalid || internal_state == eStateExited ||
+    //     internal_state == eStateDetached) {
+    // }
+ //}
+
+  return {};
+}
+#else
 thread_result_t Process::RunPrivateStateThread(bool is_secondary_thread) {
   bool control_only = true;
 
@@ -3898,6 +4008,7 @@ thread_result_t Process::RunPrivateStateThread(bool is_secondary_thread) {
     m_public_run_lock.SetStopped();
   return {};
 }
+#endif
 
 // Process Event Data
 

@@ -341,7 +341,11 @@ protected:
 
   void StopAsyncThread();
 
+  #if defined(__EMSCRIPTEN__)
+  static Status AsyncThread(void *arg);
+  #else
   lldb::thread_result_t AsyncThread();
+  #endif
 
   static void
   MonitorDebugserverProcess(std::weak_ptr<ProcessGDBRemote> process_wp,

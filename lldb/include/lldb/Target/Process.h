@@ -2978,13 +2978,19 @@ protected:
 
   void ResumePrivateStateThread();
 
+  #if defined(__EMSCRIPTEN__)
+  lldb::thread_result_t RunPrivateStateThread(bool is_secondary_thread);
+  #endif
+
 private:
   // The starts up the private state thread that will watch for events from the
   // debugee. Pass true for is_secondary_thread in the case where you have to
   // temporarily spin up a secondary state thread to handle events from a hand-
   // called function on the primary private state thread.
 
+  #if !defined(__EMSCRIPTEN__)
   lldb::thread_result_t RunPrivateStateThread(bool is_secondary_thread);
+  #endif
 
 protected:
   void HandlePrivateEvent(lldb::EventSP &event_sp);
